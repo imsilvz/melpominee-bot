@@ -48,7 +48,7 @@ async function helper_GetMusicMetadata(filepath) {
     ], { 
         stdio: 'pipe',
         shell: false,
-        windowsVerbatimArguments: true
+        //windowsVerbatimArguments: true
     });
 
     let data = "";
