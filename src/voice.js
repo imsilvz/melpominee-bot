@@ -44,9 +44,9 @@ async function helper_GetMusicMetadata(filepath) {
         "-v", "quiet",
         "-print_format", "json", 
         "-show_format",
-        `"${filepath}"`
+        filepath
     ], { 
-        stdio: 'pipe',
+        stdio: ['ignore', 'pipe', 'inherit'],
         shell: false,
         //windowsVerbatimArguments: true
     });
@@ -66,6 +66,7 @@ async function helper_GetMusicMetadata(filepath) {
     });
 
     if(exitCode) {
+        console.log(data);
         throw new Error(`subprocess error exit ${exitCode}, ${error}`);
     }
 
