@@ -65,9 +65,6 @@ async function helper_GetMusicMetadata(filepath) {
         child.on('close', resolve);
     });
 
-    console.log(data);
-    console.log(error);
-
     if(exitCode) {
         throw new Error(`subprocess error exit ${exitCode}, ${error}`);
     }
