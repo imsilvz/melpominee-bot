@@ -38,7 +38,8 @@ export const JoinDiscordVoiceChannel = async (channel) => {
         }
     });
 
-    conn.on('stateChange', (oldState, newState) => {
+    // this is a hack to fix a heartbeat issue
+    /*conn.on('stateChange', (oldState, newState) => {
         const oldNetworking = Reflect.get(oldState, 'networking');
         const newNetworking = Reflect.get(newState, 'networking');
       
@@ -49,7 +50,7 @@ export const JoinDiscordVoiceChannel = async (channel) => {
       
         oldNetworking?.off('stateChange', networkStateChangeHandler);
         newNetworking?.on('stateChange', networkStateChangeHandler);
-    });
+    });*/
 }
 
 async function helper_GetMusicMetadata(filepath) {
