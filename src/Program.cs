@@ -1,12 +1,8 @@
-﻿// See https://aka.ms/new-console-template for more information
-using Discord;
-using Discord.Commands;
-using Discord.Interactions;
+﻿using Discord.Interactions;
 using Discord.WebSocket;
 using Melpominee.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
 namespace Melpominee
 {
     class Program
@@ -17,13 +13,12 @@ namespace Melpominee
             .ConfigureServices(services =>
             {
                 services.AddSingleton<DiscordSocketClient>();
-                services.AddSingleton<InteractionService>();
                 services.AddHostedService<CommandHandler>();
+                services.AddHostedService<InteractionHandler>();
                 services.AddHostedService<MelpomineeService>();
             })
             .Build();
             await host.RunAsync();
-
         }
     }
 }

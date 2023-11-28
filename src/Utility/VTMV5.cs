@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Discord;
+﻿using Discord;
 using Discord.WebSocket;
 using Melpominee.Models;
 namespace Melpominee.Utility
@@ -69,7 +64,7 @@ namespace Melpominee.Utility
                 Successes = successes,
                 DiceResults = dicePool,
                 HungerResults = hungerPool,
-                Reroll = false,
+                Reroll = V5DiceResult.RerollType.None,
                 BestialFailure = bestial,
                 Critical = critical,
                 MessyCritical = messy,
@@ -183,10 +178,12 @@ namespace Melpominee.Utility
             return CalculateSuccesses(results, hungerResults);
         }
 
-        public static V5DiceResult RerollDicePool(V5DiceResult result)
+        public static V5DiceResult RerollDicePool(V5DiceResult result, V5DiceResult.RerollType rerollType)
         {
-            result.Reroll = true;
-            return result;
+            int[] diceResults = result.DiceResults.Order().ToArray();
+            var newResult = CalculateSuccesses(diceResults, result.HungerResults);
+            newResult.Reroll = rerollType;
+            return newResult;
         }
     }
 }

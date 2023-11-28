@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using System.Collections.Concurrent;
-
 namespace Melpominee.Services;
 public class SecretStore
 {
