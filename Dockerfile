@@ -1,10 +1,8 @@
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
 RUN apt update && apt upgrade
-RUN apt install build-essential -y
-RUN apt install curl -y
 RUN apt install ffmpeg -y
-RUN apt install libopus0 libopus-dev
-RUN apt install libsodium23 libsodium-dev
+RUN apt install libopus0 libopus-dev -y
+RUN apt install libsodium23 libsodium-dev -y
 RUN ffmpeg -version
 
 WORKDIR /app
