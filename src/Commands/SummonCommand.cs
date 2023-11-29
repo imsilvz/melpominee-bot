@@ -1,6 +1,8 @@
 ﻿using Discord;
+using Discord.Audio;
 using Discord.WebSocket;
 using Melpominee.Interfaces;
+using System.Diagnostics;
 namespace Melpominee.Commands
 {
     public class SummonCommand : ISlashCommand
@@ -35,7 +37,7 @@ namespace Melpominee.Commands
             _ = Task.Run(async () =>
             {
                 // connect
-                await voiceChannel.ConnectAsync(true, false, true);
+                var audioClient = await voiceChannel.ConnectAsync(true, false, false);
                 await command.RespondAsync($"Successfully joined voice channel \'{voiceChannel.Name}\'!", ephemeral: true);
             });
         }

@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Folder Include="manifests\" />
+    <Folder Include="audio\" />
   </ItemGroup>
 
   <ItemGroup>
