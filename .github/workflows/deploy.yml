@@ -57,6 +57,7 @@ jobs:
         run: |
           agentIP=$(curl -s https://api.ipify.org/)
           az aks update -g ${{ vars.AZURE_GROUP }} -n ${{ vars.AZURE_CLUSTER }} --api-server-authorized-ip-ranges $agentIP/32,${{ secrets.IPADDR_WHITELIST }}
+          sleep 100
     
       - name: Apply Manifests
         run: |
