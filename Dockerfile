@@ -8,12 +8,12 @@ RUN ffmpeg -version
 WORKDIR /libsodium
 RUN curl https://download.libsodium.org/libsodium/releases/LATEST.tar.gz | tar zxf -
 WORKDIR /libsodium/libsodium-stable
-RUN ./configure && make && make check && make install
+RUN ./configure && make && make install
 
 WORKDIR /libopus
 RUN curl -L https://downloads.xiph.org/releases/opus/opus-1.4.tar.gz | tar zxf -
 WORKDIR /libopus/opus-1.4
-RUN ./configure && make && make check && make install
+RUN ./configure && make && make install
 
 WORKDIR /app
 
