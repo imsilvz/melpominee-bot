@@ -12,11 +12,7 @@ public class SecretStore
         _store = new ConcurrentDictionary<string, string>();
 
         string[]? secretFiles = null;
-        if (Directory.Exists("/etc/melpominee/secrets/"))
-        {
-            secretFiles = Directory.GetFiles("/etc/melpominee/secrets/");
-        }
-        else if(Directory.Exists($"{Directory.GetCurrentDirectory()}/secrets/"))
+        if(Directory.Exists($"{Directory.GetCurrentDirectory()}/secrets/"))
         {
             secretFiles = Directory.GetFiles($"{Directory.GetCurrentDirectory()}/secrets/");
         }
@@ -33,18 +29,7 @@ public class SecretStore
     public void LoadSecret(string filename)
     {
         // check docker directory
-        string filePath;
-        if (Directory.Exists("/etc/melpominee/secrets/"))
-        {
-            // load as docker secret
-            filePath = $"/etc/melpominee/secrets/{filename}";
-        }
-        else
-        {
-            // load from local directory
-            filePath = $"{Directory.GetCurrentDirectory()}/secrets/{filename}";
-        }
-
+        string filePath = $"{Directory.GetCurrentDirectory()}/secrets/{filename}";
         if (File.Exists(filePath))
         {
             // read file

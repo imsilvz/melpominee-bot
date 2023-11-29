@@ -15,6 +15,12 @@ spec:
       labels:
         app: melpominee-bot
     spec:
+      volumes:
+      - name: config-volume
+        projected:
+          sources:
+          - secret:
+              name: melpominee-discord
       containers:
       - name: bot
         image: ghcr.io/imsilvz/melpominee-bot:master
@@ -26,5 +32,9 @@ spec:
           limits:
             memory: 256Mi
             cpu: 250m
+        volumeMounts:
+        - name: config-volume
+          mountPath: "/app/secrets"
+          readOnly: true
       imagePullSecrets:
       - name: dockerconfigjson-github-com

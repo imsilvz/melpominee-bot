@@ -14,7 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="manifests\" />
     <Folder Include="audio\" />
   </ItemGroup>
 
@@ -22,6 +21,10 @@
 	<Content Include="secrets\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	</Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=".github\workflows\deploy.yml" />
   </ItemGroup>
 
 </Project>
