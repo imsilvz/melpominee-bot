@@ -10,6 +10,7 @@ RUN curl https://download.libsodium.org/libsodium/releases/LATEST.tar.gz | tar z
 WORKDIR /libsodium/libsodium-stable
 RUN ls
 RUN ./configure && make && make check
+RUN ls
 
 WORKDIR /app
 
