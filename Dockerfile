@@ -6,6 +6,7 @@ RUN ffmpeg -version
 
 WORKDIR /libsodium
 RUN curl https://download.libsodium.org/libsodium/releases/LATEST.tar.gz | tar zxf -
+WORKDIR /libsodium/libsodium-stable
 RUN ls
 RUN ./configure && make && make check
 
