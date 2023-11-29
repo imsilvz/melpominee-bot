@@ -55,5 +55,5 @@ jobs:
     
       - name: Apply Manifests
         run: |
-          kubectl apply -f ./manifests/deploy.yaml
+          kubectl apply -f ./manifests/bot.yaml
           kubectl rollout restart deployment melpominee-bot --namespace=melpominee
