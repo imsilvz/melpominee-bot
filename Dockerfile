@@ -3,17 +3,9 @@ RUN apt update && apt upgrade
 RUN apt install build-essential -y
 RUN apt install curl -y
 RUN apt install ffmpeg -y
+RUN apt install libopus0 libopus-dev
+RUN apt install libsodium23 libsodium-dev
 RUN ffmpeg -version
-
-WORKDIR /libsodium
-RUN curl https://download.libsodium.org/libsodium/releases/LATEST.tar.gz | tar zxf -
-WORKDIR /libsodium/libsodium-stable
-RUN ./configure && make && make install
-
-WORKDIR /libopus
-RUN curl -L https://downloads.xiph.org/releases/opus/opus-1.4.tar.gz | tar zxf -
-WORKDIR /libopus/opus-1.4
-RUN ./configure && make && make install
 
 WORKDIR /app
 
