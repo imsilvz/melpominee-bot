@@ -1,17 +1,19 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
 using Melpominee.Models;
+using Melpominee.Services;
 using Melpominee.Utility;
-using Microsoft.VisualBasic;
 namespace Melpominee.Commands
 {
-    public class VampireV5Command : ISlashCommandHandler
+    public class VampireV5Command : MelpomineeCommand
     {
-        public string Name => "v5";
-        public string Description => "Roll a dice pool from Vampire: the Masquerade v5";
+        public VampireV5Command(DataContext dataContext) : base(dataContext) { }
 
-        public async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
+        public override string Name => "v5";
+        public override string Description => "Roll a dice pool from Vampire: the Masquerade v5";
+
+        public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
             // get params
             var dicePool = (int)(long)command.Data.Options.Where(opt => opt.Name == "pool").First().Value;
@@ -60,7 +62,7 @@ namespace Melpominee.Commands
             await command.RespondAsync(messageString, components: componentBuilder.Build(), embed: embed.Build());
         }
         
-        public SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
+        public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             builder.AddOption("pool", ApplicationCommandOptionType.Integer, "Number of dice in the pool", isRequired: true);
             builder.AddOption("hunger", ApplicationCommandOptionType.Integer, "Number of dice to replace with hunger dice", isRequired: true);

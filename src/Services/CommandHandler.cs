@@ -1,17 +1,19 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Hosting;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
 namespace Melpominee.Services
 {
     public class CommandHandler : IHostedService
     {
         private readonly DiscordSocketClient _client;
-        private readonly Dictionary<string, ISlashCommandHandler> _commandCache;
-        public CommandHandler(DiscordSocketClient client) 
+        private readonly Dictionary<string, MelpomineeCommand> _commandCache;
+        private readonly DataContext _dataContext;
+        public CommandHandler(DiscordSocketClient client, DataContext dataContext) 
         {
             _client = client;
-            _commandCache = new Dictionary<string, ISlashCommandHandler>();
+            _commandCache = new Dictionary<string, MelpomineeCommand>();
+            _dataContext = dataContext;
         }
 
         public async Task InstallCommands()
@@ -19,14 +21,14 @@ namespace Melpominee.Services
             // fetch all classes implementing ISlashCommand
             var types = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(s => s.GetTypes())
-                .Where(p => typeof(ISlashCommandHandler).IsAssignableFrom(p) && p.IsClass);
+                .Where(p => typeof(MelpomineeCommand).IsAssignableFrom(p) && p.IsClass && !p.IsAbstract);
 
             // create instance and register command with bot
             var commandList = new List<ApplicationCommandProperties>();
             foreach (var type in types) 
             {
                 // create instance
-                var instance = (ISlashCommandHandler)Activator.CreateInstance(type)!;
+                var instance = (MelpomineeCommand)Activator.CreateInstance(type, new object[] { _dataContext })!;
 
                 // build command with known properties, then allow custom configuration
                 var commandBuilder = new SlashCommandBuilder();

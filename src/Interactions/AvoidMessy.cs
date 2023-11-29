@@ -1,15 +1,14 @@
 ﻿using Discord.WebSocket;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
 using Melpominee.Models;
 using Melpominee.Utility;
-
 namespace Melpominee.Interactions
 {
-    public class AvoidMessy : IInteractionHandler
+    public class AvoidMessy : MelpomineeInteraction
     {
-        string IInteractionHandler.Id => "avoid-messy";
+        public override string Id => "avoid-messy";
 
-        public async Task Execute(DiscordSocketClient client, SocketInteraction interaction)
+        public override async Task Execute(DiscordSocketClient client, SocketInteraction interaction)
         {
             var messageData = (SocketMessageComponent)interaction;
             var messageEmbed = messageData.Message.Embeds.First();

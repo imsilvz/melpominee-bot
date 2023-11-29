@@ -1,19 +1,20 @@
 ﻿using Discord;
 using Discord.Audio;
 using Discord.WebSocket;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
+using Melpominee.Services;
 using System.Diagnostics;
-using System.IO;
 namespace Melpominee.Commands
 {
-    public class PlayCommand : ISlashCommandHandler
+    public class PlayCommand : MelpomineeCommand
     {
+        public PlayCommand(DataContext dataContext) : base(dataContext) { }
 
-        public string Name => "play";
+        public override string Name => "play";
 
-        public string Description => "Begin streaming a playlist.";
+        public override string Description => "Begin streaming a playlist.";
 
-        public async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
+        public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
             _ = Task.Run(async () =>
             {
@@ -37,7 +38,7 @@ namespace Melpominee.Commands
             });
         }
 
-        public SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
+        public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             return builder;
         }

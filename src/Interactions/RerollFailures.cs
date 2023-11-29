@@ -1,21 +1,14 @@
-﻿using Discord;
-using Discord.WebSocket;
-using Melpominee.Interfaces;
+﻿using Discord.WebSocket;
+using Melpominee.Abstractions;
 using Melpominee.Models;
 using Melpominee.Utility;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Melpominee.Interactions
 {
-    public class RerollFailures : IInteractionHandler
+    public class RerollFailures : MelpomineeInteraction
     {
-        string IInteractionHandler.Id => "reroll-failures";
+        public override string Id => "reroll-failures";
 
-        public async Task Execute(DiscordSocketClient client, SocketInteraction interaction)
+        public override async Task Execute(DiscordSocketClient client, SocketInteraction interaction)
         {
             var messageData = (SocketMessageComponent)interaction;
             var messageEmbed = messageData.Message.Embeds.First();

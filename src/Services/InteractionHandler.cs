@@ -2,19 +2,20 @@
 using Discord.Commands;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
 using Microsoft.Extensions.Hosting;
-
 namespace Melpominee.Services
 {
     public class InteractionHandler : IHostedService
     {
         private readonly DiscordSocketClient _client;
-        private readonly Dictionary<string, IInteractionHandler> _interactionCache;
-        public InteractionHandler(DiscordSocketClient client)
+        private readonly Dictionary<string, MelpomineeInteraction> _interactionCache;
+        private readonly DataContext _dataContext;
+        public InteractionHandler(DiscordSocketClient client, DataContext dataContext)
         {
             _client = client;
-            _interactionCache = new Dictionary<string, IInteractionHandler>();
+            _interactionCache = new Dictionary<string, MelpomineeInteraction>();
+            _dataContext = dataContext;
         }
 
         public Task InstallInteractions()
@@ -22,14 +23,14 @@ namespace Melpominee.Services
             // fetch all classes implementing ISlashCommand
             var types = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(s => s.GetTypes())
-                .Where(p => typeof(IInteractionHandler).IsAssignableFrom(p) && p.IsClass);
+                .Where(p => typeof(MelpomineeInteraction).IsAssignableFrom(p) && p.IsClass && !p.IsAbstract);
 
             // create instance and register command with bot
             var commandList = new List<ApplicationCommandProperties>();
             foreach (var type in types)
             {
                 // create instance
-                var instance = (IInteractionHandler)Activator.CreateInstance(type)!;
+                var instance = (MelpomineeInteraction)Activator.CreateInstance(type)!;
                 _interactionCache.Add(instance.Id, instance);
             }
             return Task.CompletedTask;
@@ -39,7 +40,7 @@ namespace Melpominee.Services
         {
             if (inter.Type == InteractionType.MessageComponent)
             {
-                IInteractionHandler handler;
+                MelpomineeInteraction? handler;
                 var component = (SocketMessageComponent) inter;
                 var customId = component.Data.CustomId;
                 if (!_interactionCache.TryGetValue(customId, out handler))

@@ -1,21 +1,23 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
+using Melpominee.Services;
 namespace Melpominee.Commands
 {
-    public class PingCommand : ISlashCommandHandler
+    public class PingCommand : MelpomineeCommand
     {
+        public PingCommand(DataContext dataContext) : base(dataContext) { }
 
-        public string Name => "ping";
+        public override string Name => "ping";
 
-        public string Description => "This is a Test Command!";
+        public override string Description => "This is a Test Command!";
 
-        public async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
+        public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
             await command.RespondAsync("Pong!", ephemeral: true);
         }
 
-        public SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
+        public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             return builder;
         }

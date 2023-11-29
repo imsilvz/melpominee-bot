@@ -21,6 +21,8 @@ spec:
           sources:
           - secret:
               name: melpominee-bot
+          - secret:
+              name: melpominee-postgres
       containers:
       - name: bot
         image: ghcr.io/imsilvz/melpominee-bot:master

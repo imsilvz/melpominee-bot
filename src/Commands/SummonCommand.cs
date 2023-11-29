@@ -1,16 +1,19 @@
 ﻿using Discord;
 using Discord.Audio;
 using Discord.WebSocket;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
+using Melpominee.Services;
 using System.Diagnostics;
 namespace Melpominee.Commands
 {
-    public class SummonCommand : ISlashCommandHandler
+    public class SummonCommand : MelpomineeCommand
     {
-        public string Name => "summon";
-        public string Description => "Summon Melpominee to a channel.";
+        public SummonCommand(DataContext dataContext) : base(dataContext) { }
 
-        public async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
+        public override string Name => "summon";
+        public override string Description => "Summon Melpominee to a channel.";
+
+        public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
             IVoiceChannel? voiceChannel = null;
             var channelTarget = command.Data.Options.Where((opt) => opt.Name == "channel").FirstOrDefault();
@@ -42,7 +45,7 @@ namespace Melpominee.Commands
             });
         }
 
-        public SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
+        public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             builder.AddOption("channel", ApplicationCommandOptionType.Channel, "Voice Channel to connect to.", channelTypes: new List<ChannelType> { ChannelType.Voice }, isRequired: false);
             return builder;

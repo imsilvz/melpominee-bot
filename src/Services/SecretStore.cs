@@ -40,13 +40,13 @@ public class SecretStore
             {
                 foreach (var item in secretDict)
                 {
-                    _store.AddOrUpdate(item.Key, item.Value, (key, oldValue) => item.Value);
+                    _store.AddOrUpdate(item.Key.ToUpper(), item.Value, (key, oldValue) => item.Value);
                 }
             }
         }
     }
 
-    public string? GetSecret(string key)
+    public string GetSecret(string key)
     {
         string? val;
         if (_store.TryGetValue(key, out val))

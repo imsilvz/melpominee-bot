@@ -1,14 +1,17 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using Melpominee.Interfaces;
+using Melpominee.Abstractions;
+using Melpominee.Services;
 namespace Melpominee.Commands
 {
-    public class DismissCommand : ISlashCommandHandler
+    public class DismissCommand : MelpomineeCommand
     {
-        public string Name => "dismiss";
-        public string Description => "Dismiss Melpominee from all voice channels.";
+        public DismissCommand(DataContext dataContext) : base(dataContext) { }
 
-        public async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
+        public override string Name => "dismiss";
+        public override string Description => "Dismiss Melpominee from all voice channels.";
+
+        public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
             var commandGuild = client.Guilds.First((guild) => guild.Id == command.GuildId);
             var voiceChannel = commandGuild.CurrentUser.VoiceChannel;
@@ -28,7 +31,7 @@ namespace Melpominee.Commands
             });
         }
 
-        public SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
+        public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             return builder;
         }
