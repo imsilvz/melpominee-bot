@@ -2,7 +2,7 @@
 using Discord.WebSocket;
 namespace Melpominee.Interfaces
 {
-    public interface ISlashCommand
+    public interface ISlashCommandHandler
     {
         public string Name { get; }
         public string Description { get; }

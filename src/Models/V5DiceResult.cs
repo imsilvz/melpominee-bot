@@ -17,5 +17,7 @@
         public bool Critical { get; set; } = false;
         public bool MessyCritical { get; set; } = false;
         public bool BestialFailure { get; set; } = false;
+        public string SourceUser { get; set; } = "";
+        public string SourceUserIcon { get; set; } = "";
     }
 }

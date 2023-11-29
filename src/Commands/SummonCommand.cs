@@ -5,7 +5,7 @@ using Melpominee.Interfaces;
 using System.Diagnostics;
 namespace Melpominee.Commands
 {
-    public class SummonCommand : ISlashCommand
+    public class SummonCommand : ISlashCommandHandler
     {
         public string Name => "summon";
         public string Description => "Summon Melpominee to a channel.";

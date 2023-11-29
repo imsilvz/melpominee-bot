@@ -7,11 +7,11 @@ namespace Melpominee.Services
     public class CommandHandler : IHostedService
     {
         private readonly DiscordSocketClient _client;
-        private readonly Dictionary<string, ISlashCommand> _commandCache;
+        private readonly Dictionary<string, ISlashCommandHandler> _commandCache;
         public CommandHandler(DiscordSocketClient client) 
         {
             _client = client;
-            _commandCache = new Dictionary<string, ISlashCommand>();
+            _commandCache = new Dictionary<string, ISlashCommandHandler>();
         }
 
         public async Task InstallCommands()
@@ -19,14 +19,14 @@ namespace Melpominee.Services
             // fetch all classes implementing ISlashCommand
             var types = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(s => s.GetTypes())
-                .Where(p => typeof(ISlashCommand).IsAssignableFrom(p) && p.IsClass);
+                .Where(p => typeof(ISlashCommandHandler).IsAssignableFrom(p) && p.IsClass);
 
             // create instance and register command with bot
             var commandList = new List<ApplicationCommandProperties>();
             foreach (var type in types) 
             {
                 // create instance
-                var instance = (ISlashCommand)Activator.CreateInstance(type)!;
+                var instance = (ISlashCommandHandler)Activator.CreateInstance(type)!;
 
                 // build command with known properties, then allow custom configuration
                 var commandBuilder = new SlashCommandBuilder();

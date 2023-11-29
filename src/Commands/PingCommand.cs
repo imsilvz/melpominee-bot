@@ -3,7 +3,7 @@ using Discord.WebSocket;
 using Melpominee.Interfaces;
 namespace Melpominee.Commands
 {
-    public class PingCommand : ISlashCommand
+    public class PingCommand : ISlashCommandHandler
     {
 
         public string Name => "ping";

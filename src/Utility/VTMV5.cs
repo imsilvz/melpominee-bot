@@ -71,7 +71,74 @@ namespace Melpominee.Utility
             };
         }
 
-        public static EmbedBuilder GetResultEmbed(SocketSlashCommand command, V5DiceResult result)
+        public static string GetResultMessage(int[] dicePool, int[] hungerPool)
+        {
+            // const
+            var bestialEmoji = Emote.Parse("<:v5bestial:1047224345375821987>");
+            var failEmoji = Emote.Parse("<:v5fail:1047224347707838605>");
+            var successEmoji = Emote.Parse("<:v5sux:1047224352686489710>");
+            var critEmoji = Emote.Parse("<:v5crit:1047224346650890260>");
+            var hungerFailEmoji = Emote.Parse("<:v5hungerfail:1047224350501249034>");
+            var hungerSuccessEmoji = Emote.Parse("<:v5hungersux:1047224351470133310>");
+            var hungerCritEmoji = Emote.Parse("<:v5hungercrit:1047224348638978048>");
+
+            // build message description
+            string bestFailMessage = "";
+            string diceFailMessage = "";
+            string hungerFailMessage = "";
+            string diceSuccessMessage = "";
+            string hungerSuccessMessage = "";
+            string diceCritMessage = "";
+            string hungerCritMessage = "";
+
+            foreach (var res in dicePool)
+            {
+                if (res < 6)
+                {
+                    diceFailMessage = $"{diceFailMessage}{failEmoji}";
+                }
+                else
+                {
+                    if (res == 10)
+                    {
+                        diceCritMessage = $"{diceCritMessage}{critEmoji}";
+                    }
+                    else
+                    {
+                        diceSuccessMessage = $"{diceSuccessMessage}{successEmoji}";
+                    }
+                }
+            }
+
+            foreach (var res in hungerPool)
+            {
+                if (res < 6)
+                {
+                    if (res == 1)
+                    {
+                        bestFailMessage = $"{bestFailMessage}{bestialEmoji}";
+                    }
+                    else
+                    {
+                        hungerFailMessage = $"{hungerFailMessage}{hungerFailEmoji}";
+                    }
+                }
+                else
+                {
+                    if (res == 10)
+                    {
+                        hungerCritMessage = $"{hungerCritMessage}{hungerCritEmoji}";
+                    }
+                    else
+                    {
+                        hungerSuccessMessage = $"{hungerSuccessMessage}{hungerSuccessEmoji}";
+                    }
+                }
+            }
+            return $"{bestFailMessage}{hungerFailMessage}{diceFailMessage}{diceSuccessMessage}{hungerSuccessMessage}{hungerCritMessage}{diceCritMessage}";
+        }
+
+        public static EmbedBuilder GetResultEmbed(V5DiceResult result)
         {
             // const
             Color defaultColor = new Color(2, 2, 2);
@@ -83,7 +150,7 @@ namespace Melpominee.Utility
 
             // build message title
             var messageColor = defaultColor;
-            var messageTitle = $"{command.User.Username} rolled | Pool {dicePool}";
+            var messageTitle = $"{result.SourceUser} rolled | Pool {dicePool}";
             if (hungerPool > 0)
             {
                 messageTitle = $"{messageTitle} | Hunger {hungerPool}";
@@ -152,7 +219,7 @@ namespace Melpominee.Utility
                 Author = new EmbedAuthorBuilder
                 {
                     Name = messageTitle,
-                    IconUrl = command.User.GetAvatarUrl(),
+                    IconUrl = result.SourceUserIcon,
                 }
             };
             embed.AddField("Result", resultText, inline: true);
@@ -180,8 +247,69 @@ namespace Melpominee.Utility
 
         public static V5DiceResult RerollDicePool(V5DiceResult result, V5DiceResult.RerollType rerollType)
         {
+            Random rand = new Random();
+
+            int rerollCounter = 0;
+            int maxRerolledDice = 3;
             int[] diceResults = result.DiceResults.Order().ToArray();
+            switch(rerollType)
+            {
+                case V5DiceResult.RerollType.RerollFailures:
+                    {
+                        for(int i = 0; i<diceResults.Length; i++)
+                        {
+                            if (rerollCounter >= maxRerolledDice)
+                                break;
+
+                            int die = diceResults[i];
+                            if (die < 6)
+                            {
+                                diceResults[i] = rand.Next(1, 11);
+                                rerollCounter++;
+                            }
+                        }
+                        diceResults = diceResults.Order().ToArray();
+                        break;
+                    }
+                case V5DiceResult.RerollType.MaximizeCrits:
+                    {
+                        for (int i = 0; i < diceResults.Length; i++)
+                        {
+                            if (rerollCounter >= maxRerolledDice)
+                                break;
+
+                            int die = diceResults[i];
+                            if (die < 10)
+                            {
+                                diceResults[i] = rand.Next(1, 11);
+                                rerollCounter++;
+                            }
+                        }
+                        diceResults = diceResults.Order().ToArray();
+                        break;
+                    }
+                case V5DiceResult.RerollType.AvoidMessy:
+                    {
+                        diceResults = diceResults.OrderDescending().ToArray();
+                        for (int i = 0; i < diceResults.Length; i++)
+                        {
+                            if (rerollCounter >= maxRerolledDice)
+                                break;
+
+                            int die = diceResults[i];
+                            if (die == 10)
+                            {
+                                diceResults[i] = rand.Next(1, 11);
+                                rerollCounter++;
+                            }
+                        }
+                        break;
+                    }
+                default:
+                    break;
+            }
             var newResult = CalculateSuccesses(diceResults, result.HungerResults);
+
             newResult.Reroll = rerollType;
             return newResult;
         }

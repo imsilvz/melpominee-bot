@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.IO;
 namespace Melpominee.Commands
 {
-    public class PlayCommand : ISlashCommand
+    public class PlayCommand : ISlashCommandHandler
     {
 
         public string Name => "play";

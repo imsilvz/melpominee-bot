@@ -3,7 +3,7 @@ using Discord.WebSocket;
 using Melpominee.Interfaces;
 namespace Melpominee.Commands
 {
-    public class DismissCommand : ISlashCommand
+    public class DismissCommand : ISlashCommandHandler
     {
         public string Name => "dismiss";
         public string Description => "Dismiss Melpominee from all voice channels.";
