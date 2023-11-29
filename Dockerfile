@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
 RUN apt update && apt upgrade
-RUN apt install ffmpeg
+RUN apt install ffmpeg -y
 RUN ffmpeg -version
 WORKDIR /app
 
