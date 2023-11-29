@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
 RUN apt update && apt upgrade
 RUN apt install ffmpeg -y
 RUN ffmpeg -version
+RUN wget -c https://download.libsodium.org/libsodium/releases/LATEST.tar.gz -O - | tar -xz -C /usr/src/libsodium/
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
