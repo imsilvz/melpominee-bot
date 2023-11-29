@@ -11,9 +11,6 @@ public class SecretStore
     {
         _store = new ConcurrentDictionary<string, string>();
 
-        Console.WriteLine($"{Directory.GetCurrentDirectory()}/secrets/");
-        Console.WriteLine(Directory.Exists($"{Directory.GetCurrentDirectory()}/secrets/"));
-
         string[]? secretFiles = null;
         if(Directory.Exists($"{Directory.GetCurrentDirectory()}/secrets/"))
         {

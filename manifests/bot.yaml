@@ -20,7 +20,7 @@ spec:
         projected:
           sources:
           - secret:
-              name: melpominee-discord
+              name: melpominee-bot
       containers:
       - name: bot
         image: ghcr.io/imsilvz/melpominee-bot:master
