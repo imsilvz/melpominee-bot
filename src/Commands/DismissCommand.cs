@@ -6,7 +6,7 @@ namespace Melpominee.Commands
 {
     public class DismissCommand : MelpomineeCommand
     {
-        public DismissCommand(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public DismissCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "dismiss";
         public override string Description => "Dismiss Melpominee from all voice channels.";

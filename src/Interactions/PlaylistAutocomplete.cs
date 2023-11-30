@@ -6,7 +6,7 @@ namespace Melpominee.Interactions
 {
     public class PlaylistAutocomplete : MelpomineeInteraction
     {
-        public PlaylistAutocomplete(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public PlaylistAutocomplete(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Id => "play-playlist";
         public override async Task Execute(DiscordSocketClient client, SocketInteraction interaction)

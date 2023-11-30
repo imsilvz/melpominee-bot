@@ -8,12 +8,12 @@ using Microsoft.Extensions.Hosting;
 
 namespace Melpominee.Services
 {
-    public class AudioFilesystemService : IHostedService
+    public class AudioService : IHostedService
     {
         private BlobServiceClient _serviceClient;
         private BlobContainerClient _containerClient;
         private ConcurrentDictionary<string, string> _playlistCache;
-        public AudioFilesystemService()  
+        public AudioService()  
         {
             _serviceClient = new BlobServiceClient(
                 new Uri(SecretStore.Instance.GetSecret("AZURE_STORAGE_ACCOUNT_URI")),

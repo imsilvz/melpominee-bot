@@ -6,7 +6,7 @@ namespace Melpominee.Commands
 {
     public class PingCommand : MelpomineeCommand
     {
-        public PingCommand(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public PingCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "ping";
 

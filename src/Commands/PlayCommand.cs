@@ -8,7 +8,7 @@ namespace Melpominee.Commands
 {
     public class PlayCommand : MelpomineeCommand
     {
-        public PlayCommand(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public PlayCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "play";
 

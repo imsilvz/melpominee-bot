@@ -8,7 +8,7 @@ namespace Melpominee.Commands
 {
     public class SummonCommand : MelpomineeCommand
     {
-        public SummonCommand(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public SummonCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "summon";
         public override string Description => "Summon Melpominee to a channel.";

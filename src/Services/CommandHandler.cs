@@ -8,9 +8,9 @@ namespace Melpominee.Services
     {
         private readonly DiscordSocketClient _client;
         private readonly Dictionary<string, MelpomineeCommand> _commandCache;
-        private readonly AudioFilesystemService _audioService;
+        private readonly AudioService _audioService;
         private readonly DataContext _dataContext;
-        public CommandHandler(DiscordSocketClient client, AudioFilesystemService audioService, DataContext dataContext) 
+        public CommandHandler(DiscordSocketClient client, AudioService audioService, DataContext dataContext) 
         {
             _client = client;
             _commandCache = new Dictionary<string, MelpomineeCommand>();

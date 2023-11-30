@@ -4,9 +4,9 @@ namespace Melpominee.Abstractions
 {
     public abstract class MelpomineeInteraction
     {
-        protected AudioFilesystemService _audioService;
+        protected AudioService _audioService;
         protected DataContext _dataContext;
-        public MelpomineeInteraction(AudioFilesystemService audioService, DataContext dataContext)
+        public MelpomineeInteraction(AudioService audioService, DataContext dataContext)
         {
             _audioService = audioService;
             _dataContext = dataContext;

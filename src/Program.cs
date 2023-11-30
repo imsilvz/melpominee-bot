@@ -11,11 +11,11 @@ namespace Melpominee
             using IHost host = Host.CreateDefaultBuilder(args)
             .ConfigureServices(services =>
             {
-                services.AddSingleton<AudioFilesystemService>();
+                services.AddSingleton<AudioService>();
                 services.AddSingleton<DataContext>();
                 services.AddSingleton<DiscordSocketClient>();
                 services.AddHostedService(
-                    (p) => p.GetRequiredService<AudioFilesystemService>()
+                    (p) => p.GetRequiredService<AudioService>()
                 );
                 services.AddHostedService<CommandHandler>();
                 services.AddHostedService<InteractionHandler>();

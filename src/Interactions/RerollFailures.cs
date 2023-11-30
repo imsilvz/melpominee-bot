@@ -7,7 +7,7 @@ namespace Melpominee.Interactions
 {
     public class RerollFailures : MelpomineeInteraction
     {
-        public RerollFailures(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public RerollFailures(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Id => "reroll-failures";
         public override async Task Execute(DiscordSocketClient client, SocketInteraction interaction)

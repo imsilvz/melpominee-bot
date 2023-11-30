@@ -8,7 +8,7 @@ namespace Melpominee.Commands
 {
     public class VampireV5Command : MelpomineeCommand
     {
-        public VampireV5Command(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public VampireV5Command(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "v5";
         public override string Description => "Roll a dice pool from Vampire: the Masquerade v5";

@@ -5,9 +5,9 @@ namespace Melpominee.Abstractions
 {
     public abstract class MelpomineeCommand
     {
-        protected AudioFilesystemService _audioService;
+        protected AudioService _audioService;
         protected DataContext _dataContext;
-        public MelpomineeCommand(AudioFilesystemService audioService, DataContext dataContext)
+        public MelpomineeCommand(AudioService audioService, DataContext dataContext)
         {
             _audioService = audioService;
             _dataContext = dataContext;

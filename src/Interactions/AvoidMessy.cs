@@ -7,7 +7,7 @@ namespace Melpominee.Interactions
 {
     public class AvoidMessy : MelpomineeInteraction
     {
-        public AvoidMessy(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public AvoidMessy(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Id => "avoid-messy";
         public override async Task Execute(DiscordSocketClient client, SocketInteraction interaction)
