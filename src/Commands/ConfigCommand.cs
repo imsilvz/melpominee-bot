@@ -28,19 +28,45 @@ namespace Melpominee.src.Commands
                         .WithType(ApplicationCommandOptionType.Channel)
                         .AddChannelType(ChannelType.Text)
                     ],
-                    GetValue = async (dbContext, fieldName) =>
+                    GetValue = async (dbContext, guildId, optionName, fieldName) =>
                     {
                         using(var conn = dbContext.Connect())
                         {
-                            var reader = await conn.ExecuteReaderAsync("SELECT 1");
+                            var sql = @"
+                                SELECT value
+                                FROM melpominee_bot_config
+                                WHERE guild = @GuildId
+                                  AND setting = @SettingName;
+                            ";
+                            var reader = await conn.ExecuteReaderAsync(sql, new 
+                            { 
+                                GuildId = guildId.ToString(), 
+                                SettingName = $"{optionName}-{fieldName}" 
+                            });
                             if (reader.Read())
-                                return reader.GetInt32(0);
+                                return reader.GetString(0);
                         }
-                        return "";
+                        return null;
                     },
-                    SetValue = async (dbContext, fieldName, value) =>
+                    SetValue = async (dbContext, guildId, optionName, fieldName, value) =>
                     {
-                        return true;
+                        using (var conn = dbContext.Connect())
+                        {
+                            var sql = @"
+                                INSERT INTO melpominee_bot_config
+                                    (guild, setting, value)
+                                VALUES
+                                    (@GuildId, @SettingName, @Value)
+                                ON CONFLICT (guild, setting) DO UPDATE
+                                SET value = EXCLUDED.value;
+                            ";
+                            return (await conn.ExecuteAsync(sql, new
+                            {
+                                GuildId = guildId.ToString(),
+                                SettingName = $"{optionName}-{fieldName}",
+                                Value = value.ToString(),
+                            })) > 0;
+                        }
                     },
                 }
             };
@@ -54,17 +80,16 @@ namespace Melpominee.src.Commands
             if (optionActionData.Name == "get")
             {
                 var fieldName = (string)optionActionData.Options.First().Value;
-                var fieldValue = (await optionConfig.GetValue(_dataContext, "option")).ToString();
-                await command.RespondAsync($"Current {optionData.Name} {fieldName} value: {fieldValue}", ephemeral: true);
+                object? fieldValue = await optionConfig.GetValue(_dataContext, (ulong)command.GuildId!, optionData.Name, fieldName);
+                var fieldValueString = fieldValue is null ? "null" : fieldValue.ToString();
+                await command.RespondAsync($"Current {optionData.Name} {fieldName} value: {fieldValueString}", ephemeral: true);
             }
             else
             {
                 string responseString = "Configuration Changes\n";
                 foreach(var field in optionActionData.Options)
                 {
-                    Console.WriteLine(field.Name);
-                    Console.WriteLine(field.Value);
-                    if (await optionConfig.SetValue(_dataContext, field.Name, field.Value))
+                    if (await optionConfig.SetValue(_dataContext, (ulong)command.GuildId!, optionData.Name, field.Name, field.Value))
                     {
                         responseString = $"{responseString}- Successfully set {optionData.Name} {field.Name} to {field.Value}\n";
                     }
