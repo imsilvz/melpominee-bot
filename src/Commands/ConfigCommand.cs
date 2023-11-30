@@ -25,12 +25,12 @@ namespace Melpominee.src.Commands
                 new ConfigurationOption
                 {
                     Name = "music",
-                    Description = "Related to music playback",
+                    Description = "Music playback",
                     Options =
                     [
                         new SlashCommandOptionBuilder()
                         .WithName("channel")
-                        .WithDescription("The channel where the music modal is hosted")
+                        .WithDescription("Channel where the music modal should be hosted.")
                         .WithType(ApplicationCommandOptionType.Channel)
                         .AddChannelType(ChannelType.Text)
                     ]
@@ -41,7 +41,7 @@ namespace Melpominee.src.Commands
             {
                 var getChoices = new SlashCommandOptionBuilder()
                     .WithName("option")
-                    .WithDescription("The configuration option you wish to get.")
+                    .WithDescription("The configuration option you wish to fetch.")
                     .WithType(ApplicationCommandOptionType.String)
                     .WithRequired(true);
 
@@ -58,12 +58,12 @@ namespace Melpominee.src.Commands
                     .AddOptions([
                         new SlashCommandOptionBuilder()
                             .WithName("get")
-                            .WithDescription($"Get setting {option.Description.ToLower()}")
+                            .WithDescription($"Get {option.Description.ToLower()} setting.")
                             .WithType(ApplicationCommandOptionType.SubCommand)
                             .AddOption(getChoices),
                         new SlashCommandOptionBuilder()
                             .WithName("set")
-                            .WithDescription($"Set setting {option.Description.ToLower()}")
+                            .WithDescription($"Set {option.Description.ToLower()} setting.")
                             .WithType(ApplicationCommandOptionType.SubCommand)
                             .AddOptions(option.Options)
                     ]);
