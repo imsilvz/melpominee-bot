@@ -2,8 +2,6 @@
 using Melpominee.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Azure.Storage.Blobs;
-using Azure.Identity;
 namespace Melpominee
 {
     class Program
@@ -13,9 +11,12 @@ namespace Melpominee
             using IHost host = Host.CreateDefaultBuilder(args)
             .ConfigureServices(services =>
             {
+                services.AddSingleton<AudioFilesystemService>();
                 services.AddSingleton<DataContext>();
                 services.AddSingleton<DiscordSocketClient>();
-                services.AddHostedService<AudioFilesystemService>();
+                services.AddHostedService(
+                    (p) => p.GetRequiredService<AudioFilesystemService>()
+                );
                 services.AddHostedService<CommandHandler>();
                 services.AddHostedService<InteractionHandler>();
                 services.AddHostedService<MelpomineeService>();

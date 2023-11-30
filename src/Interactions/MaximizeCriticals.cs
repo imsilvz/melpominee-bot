@@ -1,13 +1,15 @@
 ﻿using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Models;
+using Melpominee.Services;
 using Melpominee.Utility;
 namespace Melpominee.Interactions
 {
     public class MaximizeCriticals : MelpomineeInteraction
     {
-        public override string Id => "maximize-crits";
+        public MaximizeCriticals(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
+        public override string Id => "maximize-crits";
         public override async Task Execute(DiscordSocketClient client, SocketInteraction interaction)
         {
             var messageData = (SocketMessageComponent)interaction;

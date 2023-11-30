@@ -8,11 +8,13 @@ namespace Melpominee.Services
     {
         private readonly DiscordSocketClient _client;
         private readonly Dictionary<string, MelpomineeCommand> _commandCache;
+        private readonly AudioFilesystemService _audioService;
         private readonly DataContext _dataContext;
-        public CommandHandler(DiscordSocketClient client, DataContext dataContext) 
+        public CommandHandler(DiscordSocketClient client, AudioFilesystemService audioService, DataContext dataContext) 
         {
             _client = client;
             _commandCache = new Dictionary<string, MelpomineeCommand>();
+            _audioService = audioService;
             _dataContext = dataContext;
         }
 
@@ -28,7 +30,7 @@ namespace Melpominee.Services
             foreach (var type in types) 
             {
                 // create instance
-                var instance = (MelpomineeCommand)Activator.CreateInstance(type, new object[] { _dataContext })!;
+                var instance = (MelpomineeCommand)Activator.CreateInstance(type, new object[] { _audioService, _dataContext })!;
 
                 // build command with known properties, then allow custom configuration
                 var commandBuilder = new SlashCommandBuilder();

@@ -10,11 +10,13 @@ namespace Melpominee.Services
     {
         private readonly DiscordSocketClient _client;
         private readonly Dictionary<string, MelpomineeInteraction> _interactionCache;
+        private readonly AudioFilesystemService _audioService;
         private readonly DataContext _dataContext;
-        public InteractionHandler(DiscordSocketClient client, DataContext dataContext)
+        public InteractionHandler(DiscordSocketClient client, AudioFilesystemService audioService, DataContext dataContext)
         {
             _client = client;
             _interactionCache = new Dictionary<string, MelpomineeInteraction>();
+            _audioService = audioService;
             _dataContext = dataContext;
         }
 
@@ -30,7 +32,7 @@ namespace Melpominee.Services
             foreach (var type in types)
             {
                 // create instance
-                var instance = (MelpomineeInteraction)Activator.CreateInstance(type)!;
+                var instance = (MelpomineeInteraction)Activator.CreateInstance(type, new object[] { _audioService, _dataContext })!;
                 _interactionCache.Add(instance.Id, instance);
             }
             return Task.CompletedTask;
@@ -38,7 +40,16 @@ namespace Melpominee.Services
 
         public async Task HandleInteraction(SocketInteraction inter)
         {
-            if (inter.Type == InteractionType.MessageComponent)
+            if (inter.Type == InteractionType.ApplicationCommandAutocomplete)
+            {
+                MelpomineeInteraction? handler;
+                var component = (SocketAutocompleteInteraction)inter;
+                var commandId = $"{component.Data.CommandName}-{component.Data.Current.Name}";
+                if (!_interactionCache.TryGetValue(commandId, out handler))
+                    throw new Exception($"Unable to locate autocomplete handler for '/{commandId}'!");
+                await handler.Execute(_client, inter);
+            }
+            else if (inter.Type == InteractionType.MessageComponent)
             {
                 MelpomineeInteraction? handler;
                 var component = (SocketMessageComponent) inter;

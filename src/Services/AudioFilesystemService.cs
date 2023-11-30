@@ -51,22 +51,38 @@ namespace Melpominee.Services
                 string blobName = blobItem.Name;
                 string metadataFilePath = Path.Combine("assets", blobName);
                 string? metadataPath = Path.GetDirectoryName(metadataFilePath);
-                if (metadataPath is not null && !Directory.Exists(metadataPath))
-                    Directory.CreateDirectory(metadataPath);
-                var blobClient = _containerClient.GetBlobClient(blobName);
-                await blobClient.DownloadToAsync(metadataFilePath);
-
-                using(var reader = File.OpenText(metadataFilePath)) 
+                // skip if already exists
+                if (!File.Exists(metadataFilePath))
                 {
-                    var metaText = await reader.ReadToEndAsync();
-                    var metaModel = JsonSerializer.Deserialize<MelpomineePlaylistData>(metaText);
-                    if (metaModel is not null)
+                    // create directory if not exists
+                    if (metadataPath is not null && !Directory.Exists(metadataPath))
+                        Directory.CreateDirectory(metadataPath);
+                    // download files to sync assets with bucket
+                    var blobClient = _containerClient.GetBlobClient(blobName);
+                    await blobClient.DownloadToAsync(metadataFilePath);
+                }
+
+                // if its a metadata file, load playlist data
+                if (Path.GetFileName(metadataFilePath) == "meta.txt")
+                {
+                    using (var reader = File.OpenText(metadataFilePath))
                     {
-                        _playlistCache.AddOrUpdate(metaModel.PlaylistName, metaModel.Id, (newVal, oldVal) => newVal);
-                        Console.WriteLine($"Found Playlist \'{metaModel.PlaylistName}\'");
+                        var metaText = await reader.ReadToEndAsync();
+                        var metaModel = JsonSerializer.Deserialize<MelpomineePlaylistData>(metaText);
+                        if (metaModel is not null)
+                        {
+                            _playlistCache.AddOrUpdate(metaModel.PlaylistName, metaModel.Id, (newVal, oldVal) => newVal);
+                            Console.WriteLine($"Found Playlist \'{metaModel.PlaylistName}\'");
+                        }
                     }
                 }
             }
+        }
+
+        public List<string> GetPlaylists()
+        {
+            Console.WriteLine(_playlistCache.Keys.Count);
+            return _playlistCache.Keys.ToList();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)

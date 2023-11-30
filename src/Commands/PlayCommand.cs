@@ -8,7 +8,7 @@ namespace Melpominee.Commands
 {
     public class PlayCommand : MelpomineeCommand
     {
-        public PlayCommand(DataContext dataContext) : base(dataContext) { }
+        public PlayCommand(AudioFilesystemService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "play";
 
@@ -40,6 +40,7 @@ namespace Melpominee.Commands
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
+            builder.AddOption("playlist", ApplicationCommandOptionType.String, "Playlist to play", isAutocomplete: true, isRequired: true);
             return builder;
         }
     }
