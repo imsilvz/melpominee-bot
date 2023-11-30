@@ -3,14 +3,17 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Melpominee.Models;
 using System.Text.Json;
+using System.Collections.Concurrent;
+using Microsoft.Extensions.Hosting;
+
 namespace Melpominee.Services
 {
-    public class AudioFilesystemService
+    public class AudioFilesystemService : IHostedService
     {
         private BlobServiceClient _serviceClient;
         private BlobContainerClient _containerClient;
-        private Dictionary<string, string> _playlistCache;
-        public AudioFilesystemService() 
+        private ConcurrentDictionary<string, string> _playlistCache;
+        public AudioFilesystemService()  
         {
             _serviceClient = new BlobServiceClient(
                 new Uri(SecretStore.Instance.GetSecret("AZURE_STORAGE_ACCOUNT_URI")),
@@ -19,7 +22,7 @@ namespace Melpominee.Services
 
             string containerName = SecretStore.Instance.GetSecret("AZURE_STORAGE_CONTAINER");
             _containerClient = _serviceClient.GetBlobContainerClient(containerName);
-            _playlistCache = new Dictionary<string, string>();
+            _playlistCache = new ConcurrentDictionary<string, string>();
         }
 
         public async Task CreatePlaylist(string name)
@@ -41,9 +44,8 @@ namespace Melpominee.Services
             await blobClient.UploadAsync(metadataPath, true);
         }
 
-        public async Task Init()
+        private async Task Initialize()
         {
-            Console.WriteLine("Begin");
             await foreach (BlobItem blobItem in _containerClient.GetBlobsAsync())
             {
                 string blobName = blobItem.Name;
@@ -53,9 +55,28 @@ namespace Melpominee.Services
                     Directory.CreateDirectory(metadataPath);
                 var blobClient = _containerClient.GetBlobClient(blobName);
                 await blobClient.DownloadToAsync(metadataFilePath);
-                Console.WriteLine("\t" + blobName);
+
+                using(var reader = File.OpenText(metadataFilePath)) 
+                {
+                    var metaText = await reader.ReadToEndAsync();
+                    var metaModel = JsonSerializer.Deserialize<MelpomineePlaylistData>(metaText);
+                    if (metaModel is not null)
+                    {
+                        _playlistCache.AddOrUpdate(metaModel.PlaylistName, metaModel.Id, (newVal, oldVal) => newVal);
+                        Console.WriteLine($"Found Playlist \'{metaModel.PlaylistName}\'");
+                    }
+                }
             }
-            Console.WriteLine("Complete");
+        }
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            await Initialize();
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
         }
     }
 }

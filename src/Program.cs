@@ -10,14 +10,12 @@ namespace Melpominee
     {
         public static async Task Main(string[] args)
         {
-            var system = new AudioFilesystemService();
-            await system.Init();
-
             using IHost host = Host.CreateDefaultBuilder(args)
             .ConfigureServices(services =>
             {
                 services.AddSingleton<DataContext>();
                 services.AddSingleton<DiscordSocketClient>();
+                services.AddHostedService<AudioFilesystemService>();
                 services.AddHostedService<CommandHandler>();
                 services.AddHostedService<InteractionHandler>();
                 services.AddHostedService<MelpomineeService>();
