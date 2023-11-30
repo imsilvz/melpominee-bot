@@ -12,11 +12,9 @@ namespace Melpominee
             .ConfigureServices(services =>
             {
                 services.AddSingleton<AudioService>();
-                services.AddSingleton<DataContext>();
                 services.AddSingleton<DiscordSocketClient>();
-                services.AddHostedService(
-                    (p) => p.GetRequiredService<AudioService>()
-                );
+                services.AddSingleton((p) => DataContext.Instance);
+                services.AddHostedService((p) => p.GetRequiredService<AudioService>());
                 services.AddHostedService<CommandHandler>();
                 services.AddHostedService<InteractionHandler>();
                 services.AddHostedService<MelpomineeService>();

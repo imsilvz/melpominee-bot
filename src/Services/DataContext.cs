@@ -5,13 +5,10 @@ namespace Melpominee.Services
 {
     public class DataContext
     {
-        public DataContext() 
-        {
-            using (var conn = Connect())
-            {
+        private static Lazy<DataContext> _instance = new Lazy<DataContext>(() => new DataContext());
+        public static DataContext Instance => _instance.Value;
 
-            }
-        }
+        public DataContext() { }
 
         public IDbConnection Connect()
         {
