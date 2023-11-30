@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Melpominee.Models
 {
-    public class MelpomineePlaylistData
+    public class PlaylistData
     {
         public required string Id { get; set; }
         public required string PlaylistName { get; set; }

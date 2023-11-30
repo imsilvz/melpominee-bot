@@ -9,7 +9,6 @@ namespace Melpominee.Commands
         public PingCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "ping";
-
         public override string Description => "This is a Test Command!";
 
         public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)

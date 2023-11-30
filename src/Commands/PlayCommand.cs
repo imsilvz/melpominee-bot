@@ -11,7 +11,6 @@ namespace Melpominee.Commands
         public PlayCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "play";
-
         public override string Description => "Begin streaming a playlist.";
 
         public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)

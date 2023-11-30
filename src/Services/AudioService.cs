@@ -27,7 +27,7 @@ namespace Melpominee.Services
 
         public async Task CreatePlaylist(string name)
         {
-            MelpomineePlaylistData metadata = new MelpomineePlaylistData
+            PlaylistData metadata = new PlaylistData
             {
                 Id = Guid.NewGuid().ToString(),
                 PlaylistName = name,
@@ -68,7 +68,7 @@ namespace Melpominee.Services
                     using (var reader = File.OpenText(metadataFilePath))
                     {
                         var metaText = await reader.ReadToEndAsync();
-                        var metaModel = JsonSerializer.Deserialize<MelpomineePlaylistData>(metaText);
+                        var metaModel = JsonSerializer.Deserialize<PlaylistData>(metaText);
                         if (metaModel is not null)
                         {
                             _playlistCache.AddOrUpdate(metaModel.PlaylistName, metaModel.Id, (newVal, oldVal) => newVal);
