@@ -7,25 +7,24 @@ using System.Diagnostics;
 using System.Reflection;
 namespace Melpominee.Commands
 {
-    public class PlayCommand : MelpomineeCommand
+    public class StopCommand : MelpomineeCommand
     {
-        public PlayCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+        public StopCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
-        public override string Name => "play";
-        public override string Description => "Begin streaming a playlist.";
+        public override string Name => "stop";
+        public override string Description => "Stop current audio playback!";
 
         public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
             var commandGuild = client.Guilds.First((guild) => guild.Id == command.GuildId);
-            var playlistName = (string?)command.Data.Options.First().Value;
 
-            if ((commandGuild is null) || (playlistName is null))
+            if (commandGuild is null)
             {
-                await command.RespondAsync("An error occurred: Invalid guild or playlist name provided.", ephemeral: true);
+                await command.RespondAsync("An error occurred: Invalid guild.", ephemeral: true);
                 return;
             }
 
-            if(await _audioService.StartPlayback(commandGuild, playlistName))
+            if (await _audioService.StopPlayback(commandGuild))
             {
                 await command.RespondAsync("Okay!", ephemeral: true);
                 return;
@@ -35,7 +34,6 @@ namespace Melpominee.Commands
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
-            builder.AddOption("playlist", ApplicationCommandOptionType.String, "Playlist to play", isAutocomplete: true, isRequired: true);
             builder.WithDMPermission(false);
             return builder;
         }

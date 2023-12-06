@@ -4,8 +4,7 @@ using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Models;
 using Melpominee.Services;
-
-namespace Melpominee.src.Commands
+namespace Melpominee.Commands
 {
     public class ConfigCommand : MelpomineeCommand
     {
@@ -28,7 +27,7 @@ namespace Melpominee.src.Commands
                         .WithType(ApplicationCommandOptionType.Channel)
                         .AddChannelType(ChannelType.Text)
                     ],
-                    GetValue = async (dbContext, guildId, optionName, fieldName) =>
+                    GetValue = async (dbContext, guild, optionName, fieldName) =>
                     {
                         using(var conn = dbContext.Connect())
                         {
@@ -40,16 +39,37 @@ namespace Melpominee.src.Commands
                             ";
                             var reader = await conn.ExecuteReaderAsync(sql, new 
                             { 
-                                GuildId = guildId.ToString(), 
+                                GuildId = guild.Id.ToString(), 
                                 SettingName = $"{optionName}-{fieldName}" 
                             });
                             if (reader.Read())
-                                return reader.GetString(0);
+                            {
+                                var dbString = reader.GetString(0);
+                                switch(fieldName)
+                                {
+                                    case "channel":
+                                        var guildChannel = guild.GetChannel(ulong.Parse(dbString));
+                                        return guildChannel;
+                                    default:
+                                        return dbString;
+                                }
+                            }
                         }
                         return null;
                     },
-                    SetValue = async (dbContext, guildId, optionName, fieldName, value) =>
+                    SetValue = async (dbContext, guild, optionName, fieldName, value) =>
                     {
+                        string storeValue = "null";
+                        switch(fieldName)
+                        {
+                            case "channel":
+                                var channelValue = (IGuildChannel)value;
+                                storeValue = channelValue.Id.ToString();
+                                break;
+                            default:
+                                storeValue = value is not null ? value.ToString()! : "null";
+                                break;
+                        }
                         using (var conn = dbContext.Connect())
                         {
                             var sql = @"
@@ -62,9 +82,9 @@ namespace Melpominee.src.Commands
                             ";
                             return (await conn.ExecuteAsync(sql, new
                             {
-                                GuildId = guildId.ToString(),
+                                GuildId = guild.Id.ToString(),
                                 SettingName = $"{optionName}-{fieldName}",
-                                Value = value.ToString(),
+                                Value = storeValue,
                             })) > 0;
                         }
                     },
@@ -80,7 +100,7 @@ namespace Melpominee.src.Commands
             if (optionActionData.Name == "get")
             {
                 var fieldName = (string)optionActionData.Options.First().Value;
-                object? fieldValue = await optionConfig.GetValue(_dataContext, (ulong)command.GuildId!, optionData.Name, fieldName);
+                object? fieldValue = await optionConfig.GetValue(_dataContext, client.GetGuild((ulong)command.GuildId!), optionData.Name, fieldName);
                 var fieldValueString = fieldValue is null ? "null" : fieldValue.ToString();
                 await command.RespondAsync($"Current {optionData.Name} {fieldName} value: {fieldValueString}", ephemeral: true);
             }
@@ -89,7 +109,7 @@ namespace Melpominee.src.Commands
                 string responseString = "Configuration Changes\n";
                 foreach(var field in optionActionData.Options)
                 {
-                    if (await optionConfig.SetValue(_dataContext, (ulong)command.GuildId!, optionData.Name, field.Name, field.Value))
+                    if (await optionConfig.SetValue(_dataContext, client.GetGuild((ulong)command.GuildId!), optionData.Name, field.Name, field.Value))
                     {
                         responseString = $"{responseString}- Successfully set {optionData.Name} {field.Name} to {field.Value}\n";
                     }
@@ -136,6 +156,7 @@ namespace Melpominee.src.Commands
                     ]);
                 builder.AddOption(optionBuilder);
             }
+            builder.WithDMPermission(false);
             return builder;
         }
     }

@@ -16,6 +16,7 @@ namespace Melpominee.Interactions
             var autocompleteResults = _audioService
                 .GetPlaylists()
                 .Where((playlistName) => playlistName.ToLower().Contains(autocompleteText.ToLower()))
+                .Order()
                 .Select((playlistName) => new AutocompleteResult(playlistName, playlistName))
                 .Take(25)
                 .ToList();

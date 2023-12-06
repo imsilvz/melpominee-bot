@@ -48,6 +48,7 @@ namespace Melpominee.Commands
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             builder.AddOption("channel", ApplicationCommandOptionType.Channel, "Voice Channel to connect to.", channelTypes: new List<ChannelType> { ChannelType.Voice }, isRequired: false);
+            builder.WithDMPermission(false);
             return builder;
         }
     }

@@ -5,14 +5,28 @@ using Melpominee.Models;
 using System.Text.Json;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
-
+using Discord.WebSocket;
+using Discord.Audio;
+using System.Diagnostics;
+using System.Reflection;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
     {
+        public enum PlaybackStatus
+        {
+            Unknown = 0,
+            Idle    = 1,
+            Playing = 2,
+            Error   = 3,
+        }
+
         private BlobServiceClient _serviceClient;
         private BlobContainerClient _containerClient;
-        private ConcurrentDictionary<string, string> _playlistCache;
+        private Dictionary<string, List<string>> _playlistDict; // contains file mapping for playlists
+        private Dictionary<string, string> _playlistIdDict; // contains id mapping for playlists
+        private ConcurrentDictionary<ulong, PlaybackStatus> _playbackStatus;
+        private ConcurrentDictionary<ulong, CancellationTokenSource> _cancellationDict;
         public AudioService()  
         {
             _serviceClient = new BlobServiceClient(
@@ -22,10 +36,13 @@ namespace Melpominee.Services
 
             string containerName = SecretStore.Instance.GetSecret("AZURE_STORAGE_CONTAINER");
             _containerClient = _serviceClient.GetBlobContainerClient(containerName);
-            _playlistCache = new ConcurrentDictionary<string, string>();
+            _playlistDict = new Dictionary<string, List<string>>();
+            _playlistIdDict = new Dictionary<string, string>();
+            _playbackStatus = new ConcurrentDictionary<ulong, PlaybackStatus>();
+            _cancellationDict = new ConcurrentDictionary<ulong, CancellationTokenSource>();
         }
 
-        public async Task CreatePlaylist(string name)
+        public async Task<string> CreatePlaylist(string name, bool upload = true)
         {
             PlaylistData metadata = new PlaylistData
             {
@@ -39,50 +56,226 @@ namespace Melpominee.Services
             string metadataPath = Path.Combine("assets", blobPath);
             await File.WriteAllTextAsync(metadataPath, JsonSerializer.Serialize(metadata));
 
-            Console.WriteLine($"Beginning upload of metadata for new playlist \'{name}\'!");
-            var blobClient = _containerClient.GetBlobClient(blobPath);
-            await blobClient.UploadAsync(metadataPath, true);
+            if(upload)
+            {
+                Console.WriteLine($"Beginning upload of metadata for new playlist \'{name}\'!");
+                var blobClient = _containerClient.GetBlobClient(blobPath);
+                await blobClient.UploadAsync(metadataPath, true);
+            }
+            return metadata.Id;
+        }
+
+        public async Task UploadPlaylist(string playlistId)
+        {
+            Console.WriteLine($"Beginning upload of playlist ({playlistId})!");
+            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            var sourceFiles = Directory.GetFiles(Path.Combine(executingDirectory, "assets", playlistId));
+            foreach(var sourceFile in sourceFiles)
+            {
+                var sourceFileName = Path.GetFileName(sourceFile);
+                string blobPath = Path.Combine(playlistId, sourceFileName);
+                var blobClient = _containerClient.GetBlobClient(blobPath);
+                await blobClient.UploadAsync(sourceFile, true);
+            }
         }
 
         private async Task Initialize()
         {
+            //await ConvertLegacyAssets();
             await foreach (BlobItem blobItem in _containerClient.GetBlobsAsync())
             {
                 string blobName = blobItem.Name;
-                string metadataFilePath = Path.Combine("assets", blobName);
-                string? metadataPath = Path.GetDirectoryName(metadataFilePath);
+                string playlistFilePath = Path.Combine("assets", blobName);
+                string? playlistPath = Path.GetDirectoryName(playlistFilePath);
                 // skip if already exists
-                if (!File.Exists(metadataFilePath))
+                if (!File.Exists(playlistFilePath))
                 {
                     // create directory if not exists
-                    if (metadataPath is not null && !Directory.Exists(metadataPath))
-                        Directory.CreateDirectory(metadataPath);
+                    if (playlistPath is not null && !Directory.Exists(playlistPath))
+                        Directory.CreateDirectory(playlistPath);
                     // download files to sync assets with bucket
                     var blobClient = _containerClient.GetBlobClient(blobName);
-                    await blobClient.DownloadToAsync(metadataFilePath);
+                    await blobClient.DownloadToAsync(playlistFilePath);
                 }
+            }
 
-                // if its a metadata file, load playlist data
-                if (Path.GetFileName(metadataFilePath) == "meta.txt")
+            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            var playlistDirectories = Directory.GetDirectories(Path.Combine(executingDirectory, "assets"));
+            foreach (var playlistPath in playlistDirectories) 
+            {
+                var playlistId = Path.GetFileName(playlistPath);
+                // initialize file list
+                _playlistDict[playlistId] = new List<string>();
+                // iterate and setup
+                var playlistFiles = Directory.GetFiles(playlistPath);
+                foreach(var playlistFile in playlistFiles)
                 {
-                    using (var reader = File.OpenText(metadataFilePath))
+                    var fileName = Path.GetFileName(playlistFile);
+                    if (fileName == "meta.txt")
                     {
-                        var metaText = await reader.ReadToEndAsync();
-                        var metaModel = JsonSerializer.Deserialize<PlaylistData>(metaText);
-                        if (metaModel is not null)
+                        // load directory metadata
+                        using (var reader = File.OpenText(Path.Combine(playlistPath, "meta.txt")))
                         {
-                            _playlistCache.AddOrUpdate(metaModel.PlaylistName, metaModel.Id, (newVal, oldVal) => newVal);
-                            Console.WriteLine($"Found Playlist \'{metaModel.PlaylistName}\'");
+                            var metaText = await reader.ReadToEndAsync();
+                            var metaModel = JsonSerializer.Deserialize<PlaylistData>(metaText);
+                            if (metaModel is not null)
+                            {
+                                _playlistIdDict[metaModel.PlaylistName] = playlistId;
+                                Console.WriteLine($"Found Playlist \'{metaModel.PlaylistName}\' ({playlistId})");
+                            }
                         }
                     }
+                    else if (Path.GetFileNameWithoutExtension(playlistFile) == "thumb") { }
+                    else
+                    {
+                        _playlistDict[playlistId].Add(playlistFile);
+                    }
                 }
+            }
+
+            var r = new Random();
+            foreach (var playlistId in _playlistDict.Keys)
+            {
+                var shuffledPlaylist = _playlistDict[playlistId].OrderBy(x => r.Next()).ToList();
+                _playlistDict[playlistId] = shuffledPlaylist;
+            }
+        }
+
+        private async Task ConvertLegacyAssets()
+        {
+            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            var legacyDirectories = Directory.GetDirectories(Path.Combine(executingDirectory, "legacy"));
+            foreach (var legacyPath in legacyDirectories)
+            {
+                var playlistName = Path.GetFileName(legacyPath);
+                var playlistId = await CreatePlaylist(playlistName, false);
+                foreach (var legacyFile in Directory.GetFiles(legacyPath))
+                {
+                    var legacyFileName = Path.GetFileName(legacyFile);
+                    var legacyFileNameNoExt = Path.GetFileNameWithoutExtension(legacyFile);
+                    if (legacyFileNameNoExt == "thumb")
+                    {
+                        File.Copy(legacyFile, Path.Combine(executingDirectory, "assets", playlistId, legacyFileName));
+                    }
+                }
+                foreach (var legacyFile in Directory.GetFiles(Path.Combine(legacyPath, "audio")))
+                {
+                    var legacyFileName = Path.GetFileName(legacyFile);
+                    Console.WriteLine(legacyFileName);
+                    File.Copy(legacyFile, Path.Combine(executingDirectory, "assets", playlistId, legacyFileName));
+                }
+                await UploadPlaylist(playlistId);
             }
         }
 
         public List<string> GetPlaylists()
         {
-            Console.WriteLine(_playlistCache.Keys.Count);
-            return _playlistCache.Keys.ToList();
+            Console.WriteLine(_playlistIdDict.Keys.Count);
+            return _playlistIdDict.Keys.ToList();
+        }
+
+        public async Task<bool> StartPlayback(SocketGuild guild, string playlistName)
+        {
+            // fetch playlist id
+            string? playlistId;
+            if(!_playlistIdDict.TryGetValue(playlistName, out playlistId))
+                return false;
+            // queue next item
+            _ = Task.Run(async () =>
+            {
+                await StopPlayback(guild);
+                await PlayAudio(guild, playlistId);
+            });
+            return true;
+        }
+
+        public async Task<bool> StopPlayback(SocketGuild guild)
+        {
+            if (!_cancellationDict.TryGetValue(guild.Id, out var cancellation))
+                return false;
+            cancellation.Cancel();
+            while(_playbackStatus.TryGetValue(guild.Id, out var status)) 
+            {
+                if (status != PlaybackStatus.Playing) break;
+                await Task.Delay(100);
+            }
+            return true;
+        }
+
+        private async Task PlayAudio(SocketGuild guild, string playlistId, int playlistIndex = 0)
+        {
+            var audioClient = guild.AudioClient;
+            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            var cancellationToken = _cancellationDict.AddOrUpdate(
+                guild.Id, new CancellationTokenSource(), 
+                (key, oldVal) => {
+                    if (!oldVal.IsCancellationRequested || oldVal.TryReset())
+                        return oldVal;
+                    return new CancellationTokenSource();
+                }
+            ).Token;
+
+            // generate path
+            var playlistFileList = _playlistDict[playlistId];
+            if (playlistFileList is null || playlistFileList.Count == 0)
+                return;
+            if (!(playlistFileList.Count > playlistIndex))
+                playlistIndex = 0;
+            var audioFileName = _playlistDict[playlistId][playlistIndex];
+            var audioPath = Path.Combine(executingDirectory, "assets", playlistId, audioFileName);
+
+            // spin up process
+            using (var ffmpeg = Process.Start(new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-hide_banner -loglevel panic -i \"{audioPath}\" -ac 2 -f s16le -ar 48000 pipe:1",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+            }))
+            using (var output = ffmpeg.StandardOutput.BaseStream)
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed))
+            {
+                int audioBufferSize = 1024;
+                byte[] audioBuffer = new byte[audioBufferSize];
+                bool shouldExit = false;
+                bool cancelled = false;
+                try
+                {
+                    _playbackStatus.AddOrUpdate(guild.Id, PlaybackStatus.Playing, (key, oldVal) => PlaybackStatus.Playing);
+                    while (
+                        audioClient.ConnectionState == Discord.ConnectionState.Connected &&
+                        !shouldExit
+                    )
+                    {
+                        int bytesRead = await output.ReadAsync(audioBuffer, 0, audioBufferSize, cancellationToken);
+
+                        // if no more data, exit
+                        if (bytesRead <= 0)
+                        {
+                            shouldExit = true;
+                            break;
+                        }
+
+                        await discord.WriteAsync(audioBuffer, 0, bytesRead, cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException) { cancelled = true; }
+                catch { _playbackStatus.AddOrUpdate(guild.Id, PlaybackStatus.Error, (key, oldVal) => PlaybackStatus.Error); }
+                finally
+                {
+                    await discord.FlushAsync();
+                    if (cancelled)
+                        _playbackStatus.AddOrUpdate(guild.Id, PlaybackStatus.Idle, (key, oldVal) => PlaybackStatus.Idle);
+                    else if (_playbackStatus[guild.Id] == PlaybackStatus.Playing)
+                    {
+                        // continue to next track!
+                        _ = Task.Run(async () =>
+                        {
+                            await PlayAudio(guild, playlistId, playlistIndex + 1);
+                        });
+                    }
+                }
+            }
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
