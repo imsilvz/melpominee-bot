@@ -25,9 +25,10 @@ namespace Melpominee.Commands
             // run as discarded task to avoid blocking
             _ = Task.Run(async () =>
             {
-                // connect
-                await voiceChannel.DisconnectAsync();
-                await command.RespondAsync($"Successfully disconnected from \'{voiceChannel.Name}\'!", ephemeral: true);
+                if (await _audioService.Disconnect(commandGuild))
+                    await command.RespondAsync($"Successfully disconnected from \'{voiceChannel.Name}\'!", ephemeral: true);
+                else
+                    await command.RespondAsync("Failed to disconnect from channel.", ephemeral: true);
             });
         }
 

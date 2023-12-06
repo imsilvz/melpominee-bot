@@ -40,8 +40,10 @@ namespace Melpominee.Commands
             _ = Task.Run(async () =>
             {
                 // connect
-                var audioClient = await voiceChannel.ConnectAsync(true, false, false);
-                await command.RespondAsync($"Successfully joined voice channel \'{voiceChannel.Name}\'!", ephemeral: true);
+                if (await _audioService.Connect(voiceChannel))
+                    await command.RespondAsync($"Successfully joined voice channel \'{voiceChannel.Name}\'!", ephemeral: true);
+                else
+                    await command.RespondAsync("Failed to join voice channel.", ephemeral: true);
             });
         }
 

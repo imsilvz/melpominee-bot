@@ -9,6 +9,7 @@ using Discord.WebSocket;
 using Discord.Audio;
 using System.Diagnostics;
 using System.Reflection;
+using Discord;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
@@ -25,8 +26,7 @@ namespace Melpominee.Services
         private BlobContainerClient _containerClient;
         private Dictionary<string, List<string>> _playlistDict; // contains file mapping for playlists
         private Dictionary<string, string> _playlistIdDict; // contains id mapping for playlists
-        private ConcurrentDictionary<ulong, PlaybackStatus> _playbackStatus;
-        private ConcurrentDictionary<ulong, CancellationTokenSource> _cancellationDict;
+        private ConcurrentDictionary<ulong, AudioConnection> _connections;
         public AudioService()  
         {
             _serviceClient = new BlobServiceClient(
@@ -38,8 +38,7 @@ namespace Melpominee.Services
             _containerClient = _serviceClient.GetBlobContainerClient(containerName);
             _playlistDict = new Dictionary<string, List<string>>();
             _playlistIdDict = new Dictionary<string, string>();
-            _playbackStatus = new ConcurrentDictionary<ulong, PlaybackStatus>();
-            _cancellationDict = new ConcurrentDictionary<ulong, CancellationTokenSource>();
+            _connections = new ConcurrentDictionary<ulong, AudioConnection>();
         }
 
         public async Task<string> CreatePlaylist(string name, bool upload = true)
@@ -170,8 +169,34 @@ namespace Melpominee.Services
 
         public List<string> GetPlaylists()
         {
-            Console.WriteLine(_playlistIdDict.Keys.Count);
             return _playlistIdDict.Keys.ToList();
+        }
+
+        public async Task<bool> Connect(IVoiceChannel channel, bool deaf=true, bool mute=false)
+        {
+            var audioClient = await channel.ConnectAsync(deaf, mute, false);
+            var connectionModel = new AudioConnection
+            { 
+                Client = audioClient,
+                Channel = channel,
+                Guild = channel.Guild,
+                playbackCancellationToken = new CancellationTokenSource(),
+            };
+            _connections.AddOrUpdate(channel.GuildId, connectionModel, (key, oldVal) =>
+            {
+                oldVal.Client.Dispose();
+                return connectionModel;
+            });
+            return true;
+        }
+        
+        public async Task<bool> Disconnect(IGuild guild)
+        {
+            if (!_connections.TryRemove(guild.Id, out var connection))
+                return false;
+            await connection.Client.StopAsync();
+            connection.Client.Dispose();
+            return true;
         }
 
         public async Task<bool> StartPlayback(SocketGuild guild, string playlistName)
@@ -191,12 +216,12 @@ namespace Melpominee.Services
 
         public async Task<bool> StopPlayback(SocketGuild guild)
         {
-            if (!_cancellationDict.TryGetValue(guild.Id, out var cancellation))
+            if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return false;
-            cancellation.Cancel();
-            while(_playbackStatus.TryGetValue(guild.Id, out var status)) 
+            connectionData.playbackCancellationToken.Cancel();
+            while(connectionData is not null) 
             {
-                if (status != PlaybackStatus.Playing) break;
+                if (connectionData.PlaybackStatus != PlaybackStatus.Playing) break;
                 await Task.Delay(100);
             }
             return true;
@@ -204,16 +229,19 @@ namespace Melpominee.Services
 
         private async Task PlayAudio(SocketGuild guild, string playlistId, int playlistIndex = 0)
         {
-            var audioClient = guild.AudioClient;
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var cancellationToken = _cancellationDict.AddOrUpdate(
-                guild.Id, new CancellationTokenSource(), 
-                (key, oldVal) => {
-                    if (!oldVal.IsCancellationRequested || oldVal.TryReset())
-                        return oldVal;
-                    return new CancellationTokenSource();
-                }
-            ).Token;
+
+            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+                return;
+            var audioClient = connectionData.Client;
+
+            var cancellationTokenSource = connectionData.playbackCancellationToken;
+            if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
+            {
+                cancellationTokenSource = new CancellationTokenSource();
+                connectionData.playbackCancellationToken = cancellationTokenSource;
+            }
+            var cancellationToken = cancellationTokenSource.Token;
 
             // generate path
             var playlistFileList = _playlistDict[playlistId];
@@ -233,7 +261,7 @@ namespace Melpominee.Services
                 RedirectStandardOutput = true,
             }))
             using (var output = ffmpeg.StandardOutput.BaseStream)
-            using (var discord = audioClient.CreatePCMStream(AudioApplication.Mixed))
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music))
             {
                 int audioBufferSize = 1024;
                 byte[] audioBuffer = new byte[audioBufferSize];
@@ -241,9 +269,9 @@ namespace Melpominee.Services
                 bool cancelled = false;
                 try
                 {
-                    _playbackStatus.AddOrUpdate(guild.Id, PlaybackStatus.Playing, (key, oldVal) => PlaybackStatus.Playing);
+                    connectionData.PlaybackStatus = PlaybackStatus.Playing;
                     while (
-                        audioClient.ConnectionState == Discord.ConnectionState.Connected &&
+                        audioClient.ConnectionState == ConnectionState.Connected &&
                         !shouldExit
                     )
                     {
@@ -260,13 +288,13 @@ namespace Melpominee.Services
                     }
                 }
                 catch (OperationCanceledException) { cancelled = true; }
-                catch { _playbackStatus.AddOrUpdate(guild.Id, PlaybackStatus.Error, (key, oldVal) => PlaybackStatus.Error); }
+                catch { connectionData.PlaybackStatus = PlaybackStatus.Error; }
                 finally
                 {
                     await discord.FlushAsync();
                     if (cancelled)
-                        _playbackStatus.AddOrUpdate(guild.Id, PlaybackStatus.Idle, (key, oldVal) => PlaybackStatus.Idle);
-                    else if (_playbackStatus[guild.Id] == PlaybackStatus.Playing)
+                        connectionData.PlaybackStatus = PlaybackStatus.Idle;
+                    else if (connectionData.PlaybackStatus == PlaybackStatus.Playing)
                     {
                         // continue to next track!
                         _ = Task.Run(async () =>
