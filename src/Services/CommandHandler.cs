@@ -50,7 +50,11 @@ namespace Melpominee.Services
             var commandName = command.Data.Name;
             if (_commandCache.TryGetValue(commandName, out var instance))
             {
-                await instance.Execute(_client, command);
+                // run all commands async
+                _ = Task.Run(async () =>
+                {
+                    await instance.Execute(_client, command);
+                });
             }
             else
             {

@@ -36,15 +36,12 @@ namespace Melpominee.Commands
                 await command.RespondAsync("You must either be in a voice channel, or specify a voice channel to join!", ephemeral: true);
                 return;
             }
-            // spawn a discarded task so as not to block command runner
-            _ = Task.Run(async () =>
-            {
-                // connect
-                if (await _audioService.Connect(voiceChannel))
-                    await command.RespondAsync($"Successfully joined voice channel \'{voiceChannel.Name}\'!", ephemeral: true);
-                else
-                    await command.RespondAsync("Failed to join voice channel.", ephemeral: true);
-            });
+
+            // connect
+            if (await _audioService.Connect(voiceChannel))
+                await command.RespondAsync($"Successfully joined voice channel \'{voiceChannel.Name}\'!", ephemeral: true);
+            else
+                await command.RespondAsync("Failed to join voice channel.", ephemeral: true);
         }
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)

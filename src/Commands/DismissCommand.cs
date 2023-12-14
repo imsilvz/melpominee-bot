@@ -22,14 +22,12 @@ namespace Melpominee.Commands
                 await command.RespondAsync("Melpominee is not currently connected to any voice channels!", ephemeral: true);
                 return;
             }
+
             // run as discarded task to avoid blocking
-            _ = Task.Run(async () =>
-            {
-                if (await _audioService.Disconnect(commandGuild))
-                    await command.RespondAsync($"Successfully disconnected from \'{voiceChannel.Name}\'!", ephemeral: true);
-                else
-                    await command.RespondAsync("Failed to disconnect from channel.", ephemeral: true);
-            });
+            if (await _audioService.Disconnect(commandGuild))
+                await command.RespondAsync($"Successfully disconnected from \'{voiceChannel.Name}\'!", ephemeral: true);
+            else
+                await command.RespondAsync("Failed to disconnect from channel.", ephemeral: true);
         }
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
