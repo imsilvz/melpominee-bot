@@ -211,7 +211,6 @@ namespace Melpominee.Utility
             int[] failureHunger = result.HungerResults.Where(dice => dice < 6).Order().ToArray();
             hungerString = $"```diff\n- {string.Join(' ', failureHunger)} | {string.Join(' ', successHunger)} -```";
 
-
             // build embed
             var embed = new EmbedBuilder
             {

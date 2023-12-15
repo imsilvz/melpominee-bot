@@ -2,16 +2,19 @@
 using Discord.WebSocket;
 using Microsoft.Extensions.Hosting;
 using Melpominee.Abstractions;
+using Microsoft.Extensions.Logging;
 namespace Melpominee.Services
 {
     public class CommandHandler : IHostedService
     {
+        private readonly ILogger<DiscordSocketClient> _logger;
         private readonly DiscordSocketClient _client;
         private readonly Dictionary<string, MelpomineeCommand> _commandCache;
         private readonly AudioService _audioService;
         private readonly DataContext _dataContext;
-        public CommandHandler(DiscordSocketClient client, AudioService audioService, DataContext dataContext) 
+        public CommandHandler(ILogger<DiscordSocketClient> logger, DiscordSocketClient client, AudioService audioService, DataContext dataContext) 
         {
+            _logger = logger;
             _client = client;
             _commandCache = new Dictionary<string, MelpomineeCommand>();
             _audioService = audioService;
@@ -53,7 +56,18 @@ namespace Melpominee.Services
                 // run all commands async
                 _ = Task.Run(async () =>
                 {
-                    await instance.Execute(_client, command);
+                    try
+                    {
+                        await instance.Execute(_client, command);
+                    }
+                    catch (Exception ex) 
+                    {
+                        if (command.HasResponded)
+                        {
+                            await command.FollowupAsync($"An error occurred while executing the \'{commandName}\' command.", ephemeral: true);
+                        }
+                        _logger.LogError(new LogMessage(LogSeverity.Error, "Command", $"An error occurred while executing the \'{commandName}\' command", ex).ToString());
+                    }
                 });
             }
             else
