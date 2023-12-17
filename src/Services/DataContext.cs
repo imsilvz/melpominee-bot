@@ -31,7 +31,7 @@ namespace Melpominee.Services
                         PRIMARY KEY (guild, setting)
                     );
                 ";
-                //await conn.ExecuteAsync(sql);
+                await conn.ExecuteAsync(sql);
             }
         }
     }
