@@ -1,9 +1,12 @@
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
+RUN add-apt-repository ppa:tomtomtom/yt-dlp
 RUN apt update && apt upgrade -y
 RUN apt install ffmpeg -y
 RUN apt install libopus0 libopus-dev -y
 RUN apt install libsodium23 libsodium-dev -y
+RUN apt install yt-dlp
 RUN ffmpeg -version
+RUN yt-dlp -U
 
 WORKDIR /app
 
