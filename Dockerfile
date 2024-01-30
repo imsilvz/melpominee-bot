@@ -8,7 +8,7 @@ RUN apt install libopus0 libopus-dev -y
 RUN apt install libsodium23 libsodium-dev -y
 RUN apt install yt-dlp -y
 RUN ffmpeg -version
-RUN yt-dlp -U
+RUN yt-dlp --version
 
 WORKDIR /app
 
