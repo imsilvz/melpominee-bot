@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
 RUN apt update && apt upgrade -y
 RUN apt install software-properties-common -y
+RUN apt update
 RUN add-apt-repository ppa:tomtomtom/yt-dlp
 RUN apt install ffmpeg -y
 RUN apt install libopus0 libopus-dev -y
