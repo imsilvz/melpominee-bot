@@ -207,19 +207,34 @@ namespace Melpominee.Services
             return true;
         }
 
-        public async Task<bool> StartPlayback(SocketGuild guild, string playlistName)
+        public async Task<bool> StartPlaylist(SocketGuild guild, string playlistName)
         {
             // fetch playlist id
             string? playlistId;
-            if(!_playlistIdDict.TryGetValue(playlistName, out playlistId))
+            if (!_playlistIdDict.TryGetValue(playlistName, out playlistId))
                 return false;
             // queue next item
             _ = Task.Run(async () =>
             {
                 await StopPlayback(guild);
-                //await PlayPlaylist(guild, playlistId);
-                await PlayAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
-                //await PrecacheAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
+                await PlayPlaylist(guild, playlistId);
+            });
+            return true;
+        }
+
+        public async Task<bool> StartVideo(SocketGuild guild, string videoUrl)
+        {
+            // Regex!
+            var rgx = Regex.Match(videoUrl, @"youtube\.com\/watch\?v=(.*?)(?:&|$)");
+            if (!rgx.Success)
+                return false;
+            string videoId = rgx.Groups[1].Value;
+
+            // queue next item
+            _ = Task.Run(async () =>
+            {
+                await StopPlayback(guild);
+                await PlayAudio(guild, $"https://www.youtube.com/watch?v={videoId}");
             });
             return true;
         }
