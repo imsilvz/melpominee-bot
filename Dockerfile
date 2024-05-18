@@ -6,7 +6,7 @@ RUN apt-get install build-essential chrpath libssl-dev libxft-dev \
 				libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
 				bzip2 aspnetcore-runtime-8.0 libopus0 libopus-dev libsodium23 libsodium-dev -y
 
-RUN wget https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz -O /tmp/ffmpeg.tar
+RUN wget https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz -O /tmp/ffmpeg.tar.xz
 RUN mkdir /tmp/ffmpeg-git-amd64-static && tar xvf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-git-amd64-static --strip-components=1
 RUN mv /tmp/ffmpeg-git-amd64-static/ffmpeg /usr/local/bin/ffmpeg && mv /tmp/ffmpeg-git-amd64-static/ffprobe /usr/local/bin/ffprobe
 
