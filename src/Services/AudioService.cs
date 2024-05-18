@@ -307,7 +307,7 @@ namespace Melpominee.Services
             using (var ytdlp = Process.Start(new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-v -f mp4+bestaudio \"{youtubeUrl}\" -o pipe:1",
+                Arguments = $"-v -f mp4+bestaudio -S res:1440 \"{youtubeUrl}\" -o -",
                 //CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardOutput = true
@@ -315,7 +315,7 @@ namespace Melpominee.Services
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel trace -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1",
+                Arguments = $"-hide_banner -loglevel error -f mp4 -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
                 //CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
@@ -324,7 +324,7 @@ namespace Melpominee.Services
             /*using (var cacheFfmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -f m4a -i - -vn \"{videoPath}\"",
+                Arguments = $"-hide_banner -f mp4 -i pipe: -vn \"{videoPath}\"",
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
