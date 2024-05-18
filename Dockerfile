@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get install build-essential chrpath libssl-dev libxft-dev \
 				python3-launchpadlib software-properties-common wget \
 				libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
-				bzip2 aspnetcore-runtime-8.0, libopus0 libopus-dev libsodium23 libsodium-dev  -y
+				bzip2 aspnetcore-runtime-8.0 libopus0 libopus-dev libsodium23 libsodium-dev -y
 
 RUN wget https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz -O /tmp/ffmpeg.tar
 RUN mkdir /tmp/ffmpeg-git-amd64-static && tar xvf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-git-amd64-static --strip-components=1
