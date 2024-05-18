@@ -245,8 +245,8 @@ namespace Melpominee.Services
         {
             var processInfo = new ProcessStartInfo
             {
-                FileName = "cmd.exe",
-                Arguments = $"/C yt-dlp -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1",
+                FileName = "yt-dlp",
+                Arguments = $"-o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1",
                 UseShellExecute = false,
                 RedirectStandardOutput = true
             };
@@ -255,6 +255,7 @@ namespace Melpominee.Services
                 var process = Process.Start(processInfo);
                 if (process != null)
                 {
+                    process.EnableRaisingEvents = true;
                     process.ErrorDataReceived += (sender, e) => { Console.WriteLine("ERROR!"); };
                     return process.StandardOutput.BaseStream;
                 }
