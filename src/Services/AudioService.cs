@@ -245,16 +245,16 @@ namespace Melpominee.Services
         private Process? GetNetworkProcess(string videoId)
         {
             var processFileName = "cmd.exe";
-            var processFileArg = "/C";
+            var processFileArgs = $"/C yt-dlp -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1";
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) 
             {
-                processFileName = "/bin/bash";
-                processFileArg = "-c";
+                processFileName = "/bin/sh";
+                processFileArgs = $"-c \"yt-dlp -o - https://www.youtube.com/watch?v={videoId} | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1\"";
             }
             var processInfo = new ProcessStartInfo
             {
                 FileName = processFileName,
-                Arguments = $"{processFileArg} yt-dlp -q -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1",
+                Arguments = processFileArgs,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 CreateNoWindow = true
