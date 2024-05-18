@@ -307,14 +307,14 @@ namespace Melpominee.Services
             using (var ytdlp = Process.Start(new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-v -4 -f bestaudio[ext=m4a] \"{youtubeUrl}\" -o -",
+                Arguments = $"-v -4 -f bestaudio[ext=webm] \"{youtubeUrl}\" -o -",
                 UseShellExecute = false,
                 RedirectStandardOutput = true
             }))
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel debug -f m4a -i - -f s16le -ac 2 -ar 48000 -",
+                Arguments = $"-hide_banner -loglevel debug -f webm -i - -f s16le -ac 2 -ar 48000 -",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true
@@ -322,7 +322,7 @@ namespace Melpominee.Services
             /*using (var cacheFfmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -f m4a -i pipe: -vn \"{videoPath}\"",
+                Arguments = $"-hide_banner -f m4a -i - -vn \"{videoPath}\"",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = false
@@ -392,7 +392,7 @@ namespace Melpominee.Services
                                 if (downloadComplete)
                                 {
                                     convertComplete = true;
-                                    Console.WriteLine("Conversion from m4a to pcm complete!");
+                                    Console.WriteLine("Conversion from webm to pcm complete!");
                                     break;
                                 }
                             }
