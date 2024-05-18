@@ -1,8 +1,10 @@
 FROM ubuntu:jammy AS base
+ENV OPENSSL_CONF=/etc/ssl
 RUN apt-get update
 RUN apt-get install build-essential chrpath libssl-dev libxft-dev \
 				python3-launchpadlib software-properties-common wget \
-				libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev bzip2  -y
+				libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
+				bzip2 aspnetcore-runtime-8.0  -y
 
 RUN wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 -O /tmp/phantomjs.tar.bz2
 RUN mkdir /tmp/phantomjs-2.1.1-linux-x86_64 && tar xvjf /tmp/phantomjs.tar.bz2 -C /tmp/phantomjs-2.1.1-linux-x86_64 --strip-components=1
