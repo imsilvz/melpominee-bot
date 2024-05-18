@@ -213,7 +213,8 @@ namespace Melpominee.Services
             {
                 await StopPlayback(guild);
                 //await PlayPlaylist(guild, playlistId);
-                await PlayAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
+                //await PlayAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
+                await PrecacheAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
             });
             return true;
         }
@@ -229,6 +230,47 @@ namespace Melpominee.Services
                 await Task.Delay(100);
             }
             return true;
+        }
+
+        private async Task PrecacheAudio(SocketGuild guild, string youtubeUrl)
+        {
+            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+                return;
+            var audioClient = connectionData.Client;
+
+            var cancellationTokenSource = connectionData.playbackCancellationToken;
+            if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
+            {
+                cancellationTokenSource = new CancellationTokenSource();
+                connectionData.playbackCancellationToken = cancellationTokenSource;
+            }
+            var cancellationToken = cancellationTokenSource.Token;
+
+            var rgx = Regex.Match(youtubeUrl, @"youtube\.com\/watch\?v=(.*?)(?:&|$)");
+            if (!rgx.Success)
+                return;
+            string ytVideoId = rgx.Groups[1].Value;
+
+            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            var cachePath = Path.Combine(executingDirectory, "ytcache");
+            var videoPath = Path.Combine(cachePath, $"{ytVideoId}.m4a");
+            Directory.CreateDirectory(cachePath);
+
+            if (File.Exists(videoPath))
+            {
+                await PlayCachedAudio(guild, ytVideoId);
+                return;
+            }
+
+            using (var ytdlp = Process.Start(new ProcessStartInfo
+            {
+                FileName = "yt-dlp",
+                Arguments = $"--extract-audio --audio-format m4a --audio-quality 0 \"{youtubeUrl}\" -o \"{videoPath}\"",
+                UseShellExecute = false
+            }))
+            {
+
+            }
         }
 
         private async Task PlayAudio(SocketGuild guild, string youtubeUrl)
