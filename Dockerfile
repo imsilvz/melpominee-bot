@@ -6,8 +6,8 @@ RUN apt install build-essential chrpath libssl-dev libxft-dev \
 
 RUN wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 -O /tmp/phantomjs.tar.bz2
 RUN tar xvjf /tmp/phantomjs.tar.bz2
-RUN mv /tmp/phantomjs-2.1.1-linux-x86_64 /usr/local/share
-RUN ln -sf /usr/local/share/phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin
+RUN mv /tmp/phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/local/bin/phantomjs
+RUN chmod a+rx /usr/local/bin/phantomjs
 
 RUN wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
 RUN chmod a+rx /usr/local/bin/yt-dlp
@@ -16,6 +16,7 @@ RUN yt-dlp -U
 RUN apt install ffmpeg libopus0 libopus-dev libsodium23 libsodium-dev -y
 RUN ffmpeg -version
 RUN yt-dlp --version
+RUN phantomjs --version
 
 WORKDIR /app
 
