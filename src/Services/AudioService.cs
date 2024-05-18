@@ -307,14 +307,16 @@ namespace Melpominee.Services
             using (var ytdlp = Process.Start(new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-v -f bestaudio[ext=webm] \"{youtubeUrl}\" -o -",
+                Arguments = $"-v -f mp4+bestaudio \"{youtubeUrl}\" -o pipe:1",
+                //CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardOutput = true
             }))
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel debug -f webm -i - -f s16le -ac 2 -ar 48000 -",
+                Arguments = $"-hide_banner -loglevel debug -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1",
+                //CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true
@@ -323,6 +325,7 @@ namespace Melpominee.Services
             {
                 FileName = "ffmpeg",
                 Arguments = $"-hide_banner -f m4a -i - -vn \"{videoPath}\"",
+                CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = false
@@ -392,7 +395,7 @@ namespace Melpominee.Services
                                 if (downloadComplete)
                                 {
                                     convertComplete = true;
-                                    Console.WriteLine("Conversion from webm to pcm complete!");
+                                    Console.WriteLine("Conversion to pcm complete!");
                                     break;
                                 }
                             }
@@ -485,6 +488,7 @@ namespace Melpominee.Services
             {
                 FileName = "ffmpeg",
                 Arguments = $"-hide_banner -loglevel info -i \"{videoPath}\" -f s16le -ac 2 -ar 48000 pipe:1",
+                CreateNoWindow = true,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
             }))
