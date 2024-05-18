@@ -314,22 +314,22 @@ namespace Melpominee.Services
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel error -f m4a -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
+                Arguments = $"-hide_banner -f m4a -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true
             }))
-            using (var cacheFfmpeg = Process.Start(new ProcessStartInfo
+            /*using (var cacheFfmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
                 Arguments = $"-hide_banner -f m4a -i pipe: -vn \"{videoPath}\"",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = false
-            }))
+            }))*/
             using (var ytdlpOutput = ytdlp.StandardOutput.BaseStream)
             using (var ffmpegInput = ffmpeg.StandardInput.BaseStream)
-            using (var ffmpegCacheInput = cacheFfmpeg.StandardInput.BaseStream)
+            // using (var ffmpegCacheInput = cacheFfmpeg.StandardInput.BaseStream)
             using (var ffmpegOutput = ffmpeg.StandardOutput.BaseStream)
             using (var discord = audioClient.CreatePCMStream(AudioApplication.Music))
             {
@@ -346,26 +346,29 @@ namespace Melpominee.Services
                             if (bytesRead <= 0)
                             {
                                 downloadComplete = true;
-                                await ffmpegCacheInput.FlushAsync(cancellationToken);
+                                //await ffmpegCacheInput.FlushAsync(cancellationToken);
                                 await ffmpegInput.FlushAsync(cancellationToken);
-                                ffmpegCacheInput.Close();
+                                //ffmpegCacheInput.Close();
                                 ffmpegInput.Close();
                                 break;
                             }
                             else
                             {
+                                /*
                                 Task.WaitAll([
                                     ffmpegCacheInput.WriteAsync(videoBuffer, 0, bytesRead, cancellationToken),
                                     ffmpegInput.WriteAsync(videoBuffer, 0, bytesRead, cancellationToken)
                                 ]);
+                                */
+                                await ffmpegInput.WriteAsync(videoBuffer, 0, bytesRead, cancellationToken);
                             }
                         }
                     }
                     catch (OperationCanceledException)
                     {
                         Console.WriteLine("Cancellation Exception!");
-                        ffmpegCacheInput.Flush();
-                        ffmpegCacheInput.Close();
+                        //ffmpegCacheInput.Flush();
+                        //ffmpegCacheInput.Close();
                         Console.WriteLine(File.Exists(videoPath));
                         if (File.Exists(videoPath))
                             File.Delete(videoPath);
