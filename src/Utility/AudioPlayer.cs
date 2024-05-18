@@ -36,7 +36,7 @@ namespace Melpominee.Utility
                         }
                     }
                 }
-                catch (OperationCanceledException) { }
+                catch (OperationCanceledException) { throw; }
                 finally
                 {
                     await discordStream.FlushAsync();

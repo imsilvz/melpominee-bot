@@ -14,6 +14,7 @@ using Melpominee.Utility;
 using Microsoft.Extensions.Hosting;
 using File = System.IO.File;
 using System.Reflection.PortableExecutable;
+using System.Runtime.InteropServices;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
@@ -236,19 +237,27 @@ namespace Melpominee.Services
             return true;
         }
         // yt-dlp -o - "https://www.youtube.com/watch?v=BYjt5E580PY" | ffmpeg -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1 | ffmpeg -f s16le -ac 2 -ar 48000 -i pipe:0 -c:a aac "C:\Users\rjyaw\Desktop\test.m4a"
-        private Stream? GetFileStream(string path)
+        private Process? GetFileProcess(string path)
         {
             return null;
         }
 
-        private Stream? GetNetworkStream(string videoId)
+        private Process? GetNetworkProcess(string videoId)
         {
+            var processFileName = "cmd.exe";
+            var processFileArg = "/C";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) 
+            {
+                processFileName = "/bin/bash";
+                processFileArg = "-c";
+            }
             var processInfo = new ProcessStartInfo
             {
-                FileName = "yt-dlp",
-                Arguments = $"-o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1",
+                FileName = processFileName,
+                Arguments = $"{processFileArg} yt-dlp -q -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1",
                 UseShellExecute = false,
-                RedirectStandardOutput = true
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
             };
             try
             {
@@ -257,7 +266,7 @@ namespace Melpominee.Services
                 {
                     process.EnableRaisingEvents = true;
                     process.ErrorDataReceived += (sender, e) => { Console.WriteLine("ERROR!"); };
-                    return process.StandardOutput.BaseStream;
+                    return process;
                 }
             }
             catch
@@ -293,12 +302,12 @@ namespace Melpominee.Services
             var cachePath = Path.Combine(rootCachePath, $"{videoId}.m4a");
             Directory.CreateDirectory(rootCachePath);
 
-            Stream? audioStream = null;
+            Process? audioProcess = null;
             if (File.Exists(cachePath))
-            { audioStream = GetFileStream(cachePath); }
-            if (audioStream is null)
-            { audioStream = GetNetworkStream(videoId); }
-            if (audioStream is null)
+            { audioProcess = GetFileProcess(cachePath); }
+            if (audioProcess is null)
+            { audioProcess = GetNetworkProcess(videoId); }
+            if (audioProcess is null)
             {
                 // unable to fetch stream, something is wrong!
                 Console.WriteLine("STREAM IS NULL");
@@ -307,8 +316,19 @@ namespace Melpominee.Services
 
             _ = Task.Run(async () =>
             {
-                Console.WriteLine("STARTING PLAYBACK!");
-                await _player.StartPlayback(audioClient, audioStream, cancellationToken);
+                try
+                {
+                    Console.WriteLine($"[{guild.Id}] Beginning playback for {videoUrl}");
+                    await _player.StartPlayback(audioClient, audioProcess.StandardOutput.BaseStream, cancellationToken);
+                }
+                catch(OperationCanceledException)
+                { }
+                finally
+                {
+                    if (audioProcess is not null && !audioProcess.HasExited)
+                        audioProcess.Kill();
+                    Console.WriteLine($"[{guild.Id}] Audio Process has been stopped for {videoUrl}");
+                }
             });
         }
 
