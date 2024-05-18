@@ -314,7 +314,7 @@ namespace Melpominee.Services
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -f m4a -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
+                Arguments = $"-hide_banner -loglevel debug -f m4a -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true
