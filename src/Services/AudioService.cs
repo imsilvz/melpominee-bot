@@ -213,8 +213,8 @@ namespace Melpominee.Services
             {
                 await StopPlayback(guild);
                 //await PlayPlaylist(guild, playlistId);
-                //await PlayAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
-                await PrecacheAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
+                await PlayAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
+                //await PrecacheAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
             });
             return true;
         }
@@ -307,14 +307,14 @@ namespace Melpominee.Services
             using (var ytdlp = Process.Start(new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-v -4 -f webm+bestaudio -S res:1440 -o - \"{youtubeUrl}\"",
+                Arguments = $"-v -4 -f bestaudio[ext=m4a] \"{youtubeUrl}\" -o -",
                 UseShellExecute = false,
                 RedirectStandardOutput = true
             }))
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel error -f webm -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
+                Arguments = $"-hide_banner -loglevel error -f m4a -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true
@@ -322,7 +322,7 @@ namespace Melpominee.Services
             using (var cacheFfmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -f webm -i pipe: -vn \"{videoPath}\"",
+                Arguments = $"-hide_banner -f m4a -i pipe: -vn \"{videoPath}\"",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = false
@@ -389,7 +389,7 @@ namespace Melpominee.Services
                                 if (downloadComplete)
                                 {
                                     convertComplete = true;
-                                    Console.WriteLine("Conversion from webm to pcm complete!");
+                                    Console.WriteLine("Conversion from m4a to pcm complete!");
                                     break;
                                 }
                             }
