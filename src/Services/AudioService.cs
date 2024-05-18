@@ -265,7 +265,7 @@ namespace Melpominee.Services
             using (var ytdlp = Process.Start(new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"--extract-audio --audio-format m4a --audio-quality 0 \"{youtubeUrl}\" -o \"{videoPath}\"",
+                Arguments = $"-v -x --audio-format m4a --audio-quality 0 \"{youtubeUrl}\" -o \"{videoPath}\"",
                 UseShellExecute = false
             }))
             {
@@ -307,14 +307,14 @@ namespace Melpominee.Services
             using (var ytdlp = Process.Start(new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-v -4 -f mp4+bestaudio -S res:1440 -o - \"{youtubeUrl}\"",
+                Arguments = $"-v -4 -f webm+bestaudio -S res:1440 -o - \"{youtubeUrl}\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true
             }))
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel error -f mp4 -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
+                Arguments = $"-hide_banner -loglevel error -f webm -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true
@@ -322,7 +322,7 @@ namespace Melpominee.Services
             using (var cacheFfmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -f mp4 -i pipe: -vn \"{videoPath}\"",
+                Arguments = $"-hide_banner -f webm -i pipe: -vn \"{videoPath}\"",
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = false
@@ -389,7 +389,7 @@ namespace Melpominee.Services
                                 if (downloadComplete)
                                 {
                                     convertComplete = true;
-                                    Console.WriteLine("Conversion from mp4 to pcm complete!");
+                                    Console.WriteLine("Conversion from webm to pcm complete!");
                                     break;
                                 }
                             }
