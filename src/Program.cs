@@ -8,7 +8,7 @@ namespace Melpominee
     {
         public static async Task Main(string[] args)
         {
-            await DataContext.Instance.Initialize();
+            //await DataContext.Instance.Initialize();
             using IHost host = Host.CreateDefaultBuilder(args)
             .ConfigureServices(services =>
             {

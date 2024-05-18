@@ -10,6 +10,9 @@ using Discord.Audio;
 using System.Diagnostics;
 using System.Reflection;
 using Discord;
+using File = System.IO.File;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Text.RegularExpressions;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
@@ -209,7 +212,8 @@ namespace Melpominee.Services
             _ = Task.Run(async () =>
             {
                 await StopPlayback(guild);
-                await PlayAudio(guild, playlistId);
+                //await PlayPlaylist(guild, playlistId);
+                await PlayAudio(guild, "https://www.youtube.com/watch?v=BYjt5E580PY");
             });
             return true;
         }
@@ -227,7 +231,256 @@ namespace Melpominee.Services
             return true;
         }
 
-        private async Task PlayAudio(SocketGuild guild, string playlistId, int playlistIndex = 0)
+        private async Task PlayAudio(SocketGuild guild, string youtubeUrl)
+        {
+            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+                return;
+            var audioClient = connectionData.Client;
+
+            var cancellationTokenSource = connectionData.playbackCancellationToken;
+            if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
+            {
+                cancellationTokenSource = new CancellationTokenSource();
+                connectionData.playbackCancellationToken = cancellationTokenSource;
+            }
+            var cancellationToken = cancellationTokenSource.Token;
+
+            var rgx = Regex.Match(youtubeUrl, @"youtube\.com\/watch\?v=(.*?)(?:&|$)");
+            if (!rgx.Success)
+                return;
+            string ytVideoId = rgx.Groups[1].Value;
+
+            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            var cachePath = Path.Combine(executingDirectory, "ytcache");
+            var videoPath = Path.Combine(cachePath, $"{ytVideoId}.m4a");
+            Directory.CreateDirectory(cachePath);
+
+            if (File.Exists(videoPath))
+            {
+                await PlayCachedAudio(guild, ytVideoId);
+                return;
+            }
+
+            // spin up process
+            using (var ytdlp = Process.Start(new ProcessStartInfo
+            {
+                FileName = "yt-dlp",
+                Arguments = $"-4 -f mp4+bestaudio -S res:1440 -o - \"{youtubeUrl}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true
+            }))
+            using (var ffmpeg = Process.Start(new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-hide_banner -loglevel error -f mp4 -i pipe: -f s16le -ac 2 -ar 48000 pipe:",
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true
+            }))
+            using (var cacheFfmpeg = Process.Start(new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-hide_banner -f mp4 -i pipe: -vn \"{videoPath}\"",
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = false
+            }))
+            using (var ytdlpOutput = ytdlp.StandardOutput.BaseStream)
+            using (var ffmpegInput = ffmpeg.StandardInput.BaseStream)
+            using (var ffmpegCacheInput = cacheFfmpeg.StandardInput.BaseStream)
+            using (var ffmpegOutput = ffmpeg.StandardOutput.BaseStream)
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music))
+            {
+                var downloadComplete = false;
+                var inputTask = Task.Run(async () =>
+                {
+                    int bufferSize = 1024;
+                    byte[] videoBuffer = new byte[bufferSize];
+                    try
+                    {
+                        while (!downloadComplete)
+                        {
+                            int bytesRead = await ytdlpOutput.ReadAsync(videoBuffer, 0, bufferSize, cancellationToken);
+                            if (bytesRead <= 0)
+                            {
+                                downloadComplete = true;
+                                await ffmpegCacheInput.FlushAsync(cancellationToken);
+                                await ffmpegInput.FlushAsync(cancellationToken);
+                                ffmpegCacheInput.Close();
+                                ffmpegInput.Close();
+                                break;
+                            }
+                            else
+                            {
+                                Task.WaitAll([
+                                    ffmpegCacheInput.WriteAsync(videoBuffer, 0, bytesRead, cancellationToken),
+                                    ffmpegInput.WriteAsync(videoBuffer, 0, bytesRead, cancellationToken)
+                                ]);
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Console.WriteLine("Cancellation Exception!");
+                        ffmpegCacheInput.Flush();
+                        ffmpegCacheInput.Close();
+                        Console.WriteLine(File.Exists(videoPath));
+                        if (File.Exists(videoPath))
+                            File.Delete(videoPath);
+                    }
+                });
+
+                var convertComplete = false;
+                var memoryBuffer = new byte[1000000000];
+                using(var memoryStream = new MemoryStream(memoryBuffer))
+                {
+                    var convertTask = Task.Run(async () =>
+                    {
+                        int bufferSize = 1024;
+                        byte[] audioBuffer = new byte[bufferSize];
+
+                        while (!convertComplete)
+                        {
+                            int bytesRead = await ffmpegOutput.ReadAsync(audioBuffer, 0, bufferSize, cancellationToken);
+                            if (bytesRead <= 0)
+                            {
+                                if (downloadComplete)
+                                {
+                                    convertComplete = true;
+                                    Console.WriteLine("Conversion from mp4 to pcm complete!");
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                await memoryStream.WriteAsync(audioBuffer, 0, bytesRead, cancellationToken);
+                            }
+                        }
+                    });
+
+                    var outputTask = Task.Run(async () =>
+                    {
+                        bool cancelled = false;
+                        var shouldExit = false;
+                        int bufferSize = 65536;
+                        byte[] audioBuffer = new byte[bufferSize];
+                        int readPosition = 0;
+
+                        connectionData.PlaybackStatus = PlaybackStatus.Playing;
+                        try
+                        {
+                            while (!shouldExit)
+                            {
+                                int bytesToRead = 0;
+                                int curPosition = (int)memoryStream.Position;
+                                if (readPosition + bufferSize >= curPosition)
+                                {
+                                    bytesToRead = curPosition - readPosition;
+                                }
+                                else
+                                {
+                                    bytesToRead = bufferSize;
+                                }
+
+                                if (bytesToRead <= 0)
+                                {
+                                    if (convertComplete)
+                                    {
+                                        shouldExit = true;
+                                        break;
+                                    }
+                                }
+                                else
+                                {
+                                    Buffer.BlockCopy(memoryBuffer, readPosition, audioBuffer, 0, bytesToRead);
+                                    readPosition += bytesToRead;
+
+                                    await discord.WriteAsync(audioBuffer, 0, bytesToRead, cancellationToken);
+                                }
+                            }
+                        }
+                        catch (OperationCanceledException) { cancelled = true; }
+                        catch { connectionData.PlaybackStatus = PlaybackStatus.Error; }
+                        finally
+                        {
+                            await discord.FlushAsync();
+                            connectionData.PlaybackStatus = PlaybackStatus.Idle;
+                        }
+                    });
+                    Task.WaitAll([outputTask, convertTask, inputTask]);
+                }
+            }
+        }
+
+        private async Task PlayCachedAudio(SocketGuild guild, string videoId)
+        {
+            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+                return;
+            var audioClient = connectionData.Client;
+
+            var cancellationTokenSource = connectionData.playbackCancellationToken;
+            if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
+            {
+                cancellationTokenSource = new CancellationTokenSource();
+                connectionData.playbackCancellationToken = cancellationTokenSource;
+            }
+            var cancellationToken = cancellationTokenSource.Token;
+
+            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            var cachePath = Path.Combine(executingDirectory, "ytcache");
+            var videoPath = Path.Combine(cachePath, $"{videoId}.m4a");
+
+            Console.WriteLine($"Attempting playback from local cache: {videoPath}");
+            if (!File.Exists(videoPath))
+            {
+                return;
+            }
+
+            using (var ffmpeg = Process.Start(new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-hide_banner -loglevel info -i \"{videoPath}\" -f s16le -ac 2 -ar 48000 pipe:1",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+            }))
+            using (var output = ffmpeg.StandardOutput.BaseStream)
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music))
+            {
+                int audioBufferSize = 1024;
+                byte[] audioBuffer = new byte[audioBufferSize];
+                bool shouldExit = false;
+                bool cancelled = false;
+                try
+                {
+                    connectionData.PlaybackStatus = PlaybackStatus.Playing;
+                    while (
+                        audioClient.ConnectionState == ConnectionState.Connected &&
+                        !shouldExit
+                    )
+                    {
+                        int bytesRead = await output.ReadAsync(audioBuffer, 0, audioBufferSize, cancellationToken);
+
+                        // if no more data, exit
+                        if (bytesRead <= 0)
+                        {
+                            shouldExit = true;
+                            break;
+                        }
+
+                        await discord.WriteAsync(audioBuffer, 0, bytesRead, cancellationToken);
+                    }
+                }
+                catch (OperationCanceledException) { cancelled = true; }
+                catch { connectionData.PlaybackStatus = PlaybackStatus.Error; }
+                finally
+                {
+                    await discord.FlushAsync();
+                    connectionData.PlaybackStatus = PlaybackStatus.Idle;
+                }
+            }
+        }
+
+        private async Task PlayPlaylist(SocketGuild guild, string playlistId, int playlistIndex = 0)
         {
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
 
@@ -256,12 +509,12 @@ namespace Melpominee.Services
             using (var ffmpeg = Process.Start(new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel panic -i \"{audioPath}\" -ac 2 -f s16le -ar 48000 pipe:1",
+                Arguments = $"-hide_banner -loglevel panic -i \"{audioPath}\" -f s16le -ac 2 -ar 48000 pipe:1",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
             }))
             using (var output = ffmpeg.StandardOutput.BaseStream)
-            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music))
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, 1920))
             {
                 int audioBufferSize = 1024;
                 byte[] audioBuffer = new byte[audioBufferSize];
@@ -299,7 +552,7 @@ namespace Melpominee.Services
                         // continue to next track!
                         _ = Task.Run(async () =>
                         {
-                            await PlayAudio(guild, playlistId, playlistIndex + 1);
+                            await PlayPlaylist(guild, playlistId, playlistIndex + 1);
                         });
                     }
                 }

@@ -33,10 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="secrets\azure-melpominee-storage.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include=".github\workflows\deploy.yml" />
   </ItemGroup>
 
