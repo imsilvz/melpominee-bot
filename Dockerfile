@@ -2,8 +2,8 @@ FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
 RUN apt update && apt upgrade -y
 RUN apt install python3-launchpadlib software-properties-common wget -y
 
-RUN wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O ~/.local/bin/yt-dlp
-RUN chmod a+rx ~/.local/bin/yt-dlp  # Make executable
+RUN wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+RUN chmod a+rx /usr/local/bin/yt-dlp
 RUN yt-dlp -U
 
 RUN apt install ffmpeg libopus0 libopus-dev libsodium23 libsodium-dev -y
