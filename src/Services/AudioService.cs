@@ -307,7 +307,7 @@ namespace Melpominee.Services
             using (var ytdlp = Process.Start(new ProcessStartInfo
             {
                 FileName = "yt-dlp",
-                Arguments = $"-v -4 -f bestaudio[ext=webm] \"{youtubeUrl}\" -o -",
+                Arguments = $"-v -f bestaudio[ext=webm] \"{youtubeUrl}\" -o -",
                 UseShellExecute = false,
                 RedirectStandardOutput = true
             }))
