@@ -15,7 +15,7 @@ namespace Melpominee.Commands
         public PlayCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
         public override string Name => "play";
-        public override string Description => "Begin streaming a playlist.";
+        public override string Description => "Immediately begin playing a song or playlist";
 
         public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
@@ -61,14 +61,16 @@ namespace Melpominee.Commands
                     await command.RespondAsync("Invalid playback URL!", ephemeral: true);
                     return;
                 }
+                string parsedVideoUrl = rgx1.Success ? rgx1.Captures[0].Value : rgx2.Captures[0].Value;
                 string videoId = rgx1.Success ? rgx1.Groups[1].Value : rgx2.Groups[1].Value;
 
                 audioSource = new AudioSource(AudioSource.SourceType.Networked, videoId);
                 _ = Task.Run(async () =>
                 {
+                    await _audioService.StopPlayback(commandGuild);
                     await _audioService.PlayAudio(commandGuild, audioSource);
                 });
-                await command.RespondAsync("Playback starting!", ephemeral: true);
+                await command.RespondAsync($"Playback of `{parsedVideoUrl}` starting!", ephemeral: true);
                 return;
             }
             await command.RespondAsync("An error occurred while processing your request.", ephemeral: true);

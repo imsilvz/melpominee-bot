@@ -1,18 +1,16 @@
 ﻿using Discord;
-using Discord.Audio;
 using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Services;
-using System.Diagnostics;
-using System.Reflection;
-namespace Melpominee.Commands
-{
-    public class StopCommand : MelpomineeCommand
-    {
-        public StopCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
 
-        public override string Name => "stop";
-        public override string Description => "Stop current audio playback!";
+namespace Melpominee.src.Commands
+{
+    public class SkipCommand : MelpomineeCommand
+    {
+        public SkipCommand(AudioService audioService, DataContext dataContext) : base(audioService, dataContext) { }
+
+        public override string Name => "skip";
+        public override string Description => "Skip current track in the playback queue";
 
         public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
@@ -27,7 +25,6 @@ namespace Melpominee.Commands
             await command.DeferAsync(ephemeral: true);
             _ = Task.Run(async () =>
             {
-                _audioService.ClearAudioQueue(commandGuild);
                 if (await _audioService.StopPlayback(commandGuild))
                 {
                     await command.FollowupAsync("Okay!", ephemeral: true);

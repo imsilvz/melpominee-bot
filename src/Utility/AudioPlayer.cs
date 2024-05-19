@@ -5,12 +5,17 @@ using System.IO;
 using System.Threading;
 using Discord.Audio.Streams;
 using Melpominee.Models;
+using static Melpominee.Services.AudioService;
 namespace Melpominee.Utility
 {
     public class AudioPlayer
     {
-        public async Task StartPlayback(IAudioClient client, AudioSource source, CancellationToken cancellationToken = default(CancellationToken))
+        public event EventHandler<AudioConnection>? PlaybackFinished;
+        public async Task StartPlayback(AudioConnection conn, AudioSource source, CancellationToken cancellationToken = default(CancellationToken))
         {
+            conn.PlaybackStatus = PlaybackStatus.Playing;
+
+            var client = conn.Client;
             var fileStream = source.GetStream();
             using (var discordStream = client.CreatePCMStream(AudioApplication.Music))
             {
@@ -41,6 +46,12 @@ namespace Melpominee.Utility
                 finally
                 {
                     await discordStream.FlushAsync();
+
+                    // fire event handler
+                    _ = Task.Run(() =>
+                    {
+                        PlaybackFinished?.Invoke(this, conn);
+                    });
                 }
             }
         }

@@ -20,6 +20,7 @@ namespace Melpominee.Models
         }
 
         // metadata
+        private bool _caching = false;
         private SourceType _sourceType;
         private string _sourcePath;
         private Process? _streamProcess = null;
@@ -33,6 +34,7 @@ namespace Melpominee.Models
         {
             if (_sourceType == SourceType.Networked)
             {
+                _caching = true;
                 var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
                 var rootCachePath = Path.Combine(executingDirectory, "ytcache");
                 var cachePath = Path.Combine(rootCachePath, $"{_sourcePath}.m4a");
@@ -47,14 +49,17 @@ namespace Melpominee.Models
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp",
-                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} -x --audio-format m4a --audio-quality 0 -o {cachePath}",
+                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} -q -x --audio-format m4a --audio-quality 0 -o {cachePath}",
                     UseShellExecute = false,
                     RedirectStandardOutput = false,
-                    CreateNoWindow = false
+                    CreateNoWindow = true
                 };
                 var process = Process.Start(processInfo);
                 if (process is null)
+                {
+                    _caching = false;
                     return false;
+                }
 
                 // handle result
                 await process.WaitForExitAsync();
@@ -64,9 +69,11 @@ namespace Melpominee.Models
                     {
                         File.Delete(cachePath);
                     }
+                    _caching = false;
                     return false;
                 }
             }
+            _caching = false;
             return true;
         }
 
@@ -94,7 +101,7 @@ namespace Melpominee.Models
                 }
                 else if (_sourceType == SourceType.Networked)
                 {
-                    if (GetCached())
+                    if (GetCached() && !_caching)
                     {
                         var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
                         var rootCachePath = Path.Combine(executingDirectory, "ytcache");
@@ -146,11 +153,11 @@ namespace Melpominee.Models
         private Process? GetNetworkProcess(string videoId)
         {
             var processFileName = "cmd.exe";
-            var processFileArgs = $"/C yt-dlp -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1";
+            var processFileArgs = $"/C yt-dlp -q -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1";
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 processFileName = "/bin/sh";
-                processFileArgs = $"-c \"yt-dlp -o - https://www.youtube.com/watch?v={videoId} | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1\"";
+                processFileArgs = $"-c \"yt-dlp -q -o - https://www.youtube.com/watch?v={videoId} | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1\"";
             }
             var processInfo = new ProcessStartInfo
             {
