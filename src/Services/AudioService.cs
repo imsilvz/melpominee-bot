@@ -233,7 +233,7 @@ namespace Melpominee.Services
             while(connectionData is not null) 
             {
                 if (connectionData.PlaybackStatus != PlaybackStatus.Playing) break;
-                await Task.Delay(100);
+                await Task.Delay(1);
             }
             return true;
         }

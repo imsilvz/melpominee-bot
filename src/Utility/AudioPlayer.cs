@@ -17,7 +17,7 @@ namespace Melpominee.Utility
 
             var client = conn.Client;
             var fileStream = source.GetStream();
-            using (var discordStream = client.CreatePCMStream(AudioApplication.Music))
+            using (var discordStream = client.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 100))
             {
                 int bufferSize = 1024;
                 byte[] readBuffer = new byte[bufferSize];
