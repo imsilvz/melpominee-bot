@@ -25,7 +25,7 @@ namespace Melpominee.Utility
 
                 try
                 {
-                    while (true)
+                    while (client.ConnectionState == ConnectionState.Connected)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 

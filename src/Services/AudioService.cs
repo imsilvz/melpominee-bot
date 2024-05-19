@@ -65,12 +65,14 @@ namespace Melpominee.Services
             string metadataPath = Path.Combine("assets", blobPath);
             await File.WriteAllTextAsync(metadataPath, JsonSerializer.Serialize(metadata));
 
-            if(upload)
+            if (upload)
             {
                 Console.WriteLine($"Beginning upload of metadata for new playlist \'{name}\'!");
                 var blobClient = _containerClient.GetBlobClient(blobPath);
                 await blobClient.UploadAsync(metadataPath, true);
             }
+
+            _playlistIdDict[name] = metadata.Id;
             return metadata.Id;
         }
 
@@ -88,36 +90,18 @@ namespace Melpominee.Services
             }
         }
 
-        private async Task Initialize()
+        public async Task ReloadPlaylists()
         {
-            //await ConvertLegacyAssets();
-            await foreach (BlobItem blobItem in _containerClient.GetBlobsAsync())
-            {
-                string blobName = blobItem.Name;
-                string playlistFilePath = Path.Combine("assets", blobName);
-                string? playlistPath = Path.GetDirectoryName(playlistFilePath);
-                // skip if already exists
-                if (!File.Exists(playlistFilePath))
-                {
-                    // create directory if not exists
-                    if (playlistPath is not null && !Directory.Exists(playlistPath))
-                        Directory.CreateDirectory(playlistPath);
-                    // download files to sync assets with bucket
-                    var blobClient = _containerClient.GetBlobClient(blobName);
-                    await blobClient.DownloadToAsync(playlistFilePath);
-                }
-            }
-
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
             var playlistDirectories = Directory.GetDirectories(Path.Combine(executingDirectory, "assets"));
-            foreach (var playlistPath in playlistDirectories) 
+            foreach (var playlistPath in playlistDirectories)
             {
                 var playlistId = Path.GetFileName(playlistPath);
                 // initialize file list
                 _playlistDict[playlistId] = new List<string>();
                 // iterate and setup
                 var playlistFiles = Directory.GetFiles(playlistPath);
-                foreach(var playlistFile in playlistFiles)
+                foreach (var playlistFile in playlistFiles)
                 {
                     var fileName = Path.GetFileName(playlistFile);
                     if (fileName == "meta.txt")
@@ -148,6 +132,28 @@ namespace Melpominee.Services
                 var shuffledPlaylist = _playlistDict[playlistId].OrderBy(x => r.Next()).ToList();
                 _playlistDict[playlistId] = shuffledPlaylist;
             }
+        }
+
+        private async Task Initialize()
+        {
+            //await ConvertLegacyAssets();
+            await foreach (BlobItem blobItem in _containerClient.GetBlobsAsync())
+            {
+                string blobName = blobItem.Name;
+                string playlistFilePath = Path.Combine("assets", blobName);
+                string? playlistPath = Path.GetDirectoryName(playlistFilePath);
+                // skip if already exists
+                if (!File.Exists(playlistFilePath))
+                {
+                    // create directory if not exists
+                    if (playlistPath is not null && !Directory.Exists(playlistPath))
+                        Directory.CreateDirectory(playlistPath);
+                    // download files to sync assets with bucket
+                    var blobClient = _containerClient.GetBlobClient(blobName);
+                    await blobClient.DownloadToAsync(playlistFilePath);
+                }
+            }
+            await ReloadPlaylists();
         }
 
         private async Task ConvertLegacyAssets()
@@ -182,6 +188,13 @@ namespace Melpominee.Services
             return _playlistIdDict.Keys.ToList();
         }
 
+        public string? GetPlaylistId(string playlistName)
+        {
+            if(_playlistIdDict.TryGetValue(playlistName, out var playlistId))
+                return playlistId;
+            return null;
+        }
+
         public async Task<bool> Connect(IVoiceChannel channel, bool deaf=true, bool mute=false)
         {
             var audioClient = await channel.ConnectAsync(deaf, mute, false);
@@ -213,10 +226,12 @@ namespace Melpominee.Services
 
         public async Task<bool> StartPlaylist(SocketGuild guild, string playlistName)
         {
+            Console.WriteLine(playlistName);
             // fetch playlist id
             string? playlistId;
             if (!_playlistIdDict.TryGetValue(playlistName, out playlistId))
                 return false;
+            Console.WriteLine(playlistId);
             // queue next item
             _ = Task.Run(async () =>
             {
@@ -273,7 +288,9 @@ namespace Melpominee.Services
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return;
             var audioClient = connectionData.Client;
+            Console.WriteLine("Pre-stop");
             await StopPlayback(guild);
+            Console.WriteLine("Post-stop");
 
             var cancellationTokenSource = connectionData.playbackCancellationToken;
             if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())

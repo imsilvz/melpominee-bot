@@ -24,9 +24,12 @@ namespace Melpominee.Commands
             var commandGuild = client.Guilds.First((guild) => guild.Id == command.GuildId);
             var commandOpts = command.Data.Options;
             var videoArg = commandOpts.Where((opt) => opt.Name == "url");
+            var playlistArg = commandOpts.Where((opt) => opt.Name == "playlist");
 
             string? videoUrl = null;
+            string? playlistName = null;
             if (videoArg.Count() > 0) { videoUrl = (string?)videoArg.First(); }
+            if (playlistArg.Count() > 0) { playlistName = (string?)playlistArg.First(); }
 
             if ((commandGuild is null) || (videoUrl is null))
             {
@@ -43,14 +46,29 @@ namespace Melpominee.Commands
                 return;
             }
             string videoId = rgx1.Success ? rgx1.Groups[1].Value : rgx2.Groups[1].Value;
+            await command.DeferAsync(ephemeral: true);
+
+            // check playlist!
+            string? playlistId = null;
+            if (!string.IsNullOrEmpty(playlistName))
+            {
+                playlistId = _audioService.GetPlaylistId(playlistName);
+                if (playlistId is null)
+                    playlistId = await _audioService.CreatePlaylist(playlistName);
+            }
 
             // defer response until after the download!
-            await command.RespondAsync("Download starting...", ephemeral: true);
+            await command.FollowupAsync("Download starting...", ephemeral: true);
             _ = Task.Run(async () =>
             {
-                var audioSource = new AudioSource(AudioSource.SourceType.Networked, videoId);
-                if (await audioSource.Precache())
+                var audioSource = new AudioSource((playlistId is null) ? AudioSource.SourceType.Networked : AudioSource.SourceType.Local, videoId);
+                if (await audioSource.Precache(playlistId))
                 {
+                    if (playlistId is not null)
+                    {
+                        await _audioService.UploadPlaylist(playlistId);
+                        await _audioService.ReloadPlaylists();
+                    }
                     await command.FollowupAsync("Download complete!", ephemeral: true);
                     return;
                 }
@@ -61,6 +79,7 @@ namespace Melpominee.Commands
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             builder.AddOption("url", ApplicationCommandOptionType.String, "URL to download", isAutocomplete: false, isRequired: true);
+            builder.AddOption("playlist", ApplicationCommandOptionType.String, "Playlist to add to (or create!)", isAutocomplete: false, isRequired: false);
             builder.WithDMPermission(false);
             return builder;
         }

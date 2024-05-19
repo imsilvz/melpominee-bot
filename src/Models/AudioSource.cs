@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Melpominee.Models
 {
@@ -30,7 +31,7 @@ namespace Melpominee.Models
             _sourcePath = sourcePath;
         }
 
-        public async Task<bool> Precache()
+        public async Task<bool> Precache(string? playlistId = null)
         {
             if (_sourceType == SourceType.Networked)
             {
@@ -73,10 +74,50 @@ namespace Melpominee.Models
                     return false;
                 }
             }
+            else if(_sourceType == SourceType.Local)
+            {
+                if (string.IsNullOrEmpty(playlistId))
+                    return false;
+                _caching = true;
+
+                // calculate path
+                var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+                var playlistPath = Path.Combine(executingDirectory, "assets", playlistId);
+                var filePath = $"{playlistPath}/%(title)s.%(ext)s";
+                var thumbPath = $"{playlistPath}/thumb.%(ext)s";
+
+                // run yt-dlp process
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = "yt-dlp",
+                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} -q -x --audio-format m4a --audio-quality 0 -o {filePath} --write-thumbnail --convert-thumbnails png -o thumbnail:{thumbPath}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = false,
+                    CreateNoWindow = true
+                };
+                var process = Process.Start(processInfo);
+                if (process is null)
+                {
+                    _caching = false;
+                    return false;
+                }
+
+                // handle result
+                await process.WaitForExitAsync();
+                if (process.ExitCode != 0)
+                {
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                    }
+                    _caching = false;
+                    return false;
+                }
+            }
             _caching = false;
             return true;
         }
-
+         
         public bool GetCached()
         {
             if (_sourceType == SourceType.Local) { return true; }
