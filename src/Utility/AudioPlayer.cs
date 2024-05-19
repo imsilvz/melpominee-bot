@@ -1,16 +1,17 @@
 ﻿using Discord;
 using Discord.Audio;
 using System.Diagnostics;
-using static Melpominee.Services.AudioService;
 using System.IO;
 using System.Threading;
 using Discord.Audio.Streams;
+using Melpominee.Models;
 namespace Melpominee.Utility
 {
     public class AudioPlayer
     {
-        public async Task StartPlayback(IAudioClient client, Stream fileStream, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task StartPlayback(IAudioClient client, AudioSource source, CancellationToken cancellationToken = default(CancellationToken))
         {
+            var fileStream = source.GetStream();
             using (var discordStream = client.CreatePCMStream(AudioApplication.Music))
             {
                 int bufferSize = 1024;

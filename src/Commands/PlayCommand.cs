@@ -2,9 +2,12 @@
 using Discord.Audio;
 using Discord.WebSocket;
 using Melpominee.Abstractions;
+using Melpominee.Models;
 using Melpominee.Services;
+using System;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.RegularExpressions;
 namespace Melpominee.Commands
 {
     public class PlayCommand : MelpomineeCommand
@@ -17,8 +20,15 @@ namespace Melpominee.Commands
         public override async Task Execute(DiscordSocketClient client, SocketSlashCommand command)
         {
             var commandGuild = client.Guilds.First((guild) => guild.Id == command.GuildId);
-            var playlistName = (string?)command.Data.Options.Where((opt) => opt.Name == "playlist").FirstOrDefault();
-            var videoUrl = (string?)command.Data.Options.Where((opt) => opt.Name == "url").FirstOrDefault();
+            var commandOpts = command.Data.Options;
+
+            var playlistArg = commandOpts.Where((opt) => opt.Name == "playlist");
+            var videoArg = commandOpts.Where((opt) => opt.Name == "url");
+
+            string? playlistName = null;
+            string? videoUrl = null;
+            if (playlistArg.Count() > 0) { playlistName = (string?)playlistArg.First(); }
+            if (videoArg.Count() > 0) { videoUrl = (string?)videoArg.First(); }
 
             if ((commandGuild is null) || ((playlistName is null) && (videoUrl is null)))
             {
@@ -32,6 +42,7 @@ namespace Melpominee.Commands
                 return;
             }
 
+            AudioSource audioSource;
             if(playlistName is not null)
             {
                 if (await _audioService.StartPlaylist(commandGuild, playlistName))
@@ -42,16 +53,23 @@ namespace Melpominee.Commands
             }
             else if(videoUrl is not null)
             {
-                if (await _audioService.StartVideo(commandGuild, videoUrl))
+                // Regex!
+                var rgx1 = Regex.Match(videoUrl, @"youtube\.com\/watch\?v=(.*?)(?:&|$)");
+                var rgx2 = Regex.Match(videoUrl, @"youtu\.be\/(.*?)(?:\?|$)");
+                if (!(rgx1.Success || rgx2.Success))
                 {
-                    await command.RespondAsync("Playback starting!", ephemeral: true);
+                    await command.RespondAsync("Invalid playback URL!", ephemeral: true);
                     return;
                 }
-                else
+                string videoId = rgx1.Success ? rgx1.Groups[1].Value : rgx2.Groups[1].Value;
+
+                audioSource = new AudioSource(AudioSource.SourceType.Networked, videoId);
+                _ = Task.Run(async () =>
                 {
-                    await command.RespondAsync("Link failed regex check!", ephemeral: true);
-                    return;
-                }
+                    await _audioService.PlayAudio(commandGuild, audioSource);
+                });
+                await command.RespondAsync("Playback starting!", ephemeral: true);
+                return;
             }
             await command.RespondAsync("An error occurred while processing your request.", ephemeral: true);
         }
@@ -59,7 +77,7 @@ namespace Melpominee.Commands
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             builder.AddOption("playlist", ApplicationCommandOptionType.String, "Playlist to play", isAutocomplete: true, isRequired: false);
-            builder.AddOption("url", ApplicationCommandOptionType.String, "URL to play", isAutocomplete: true, isRequired: false);
+            builder.AddOption("url", ApplicationCommandOptionType.String, "URL to play", isAutocomplete: false, isRequired: false);
             builder.WithDMPermission(false);
             return builder;
         }

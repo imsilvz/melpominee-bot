@@ -45,7 +45,7 @@ namespace Melpominee.Services
                 commandList.Add(commandBuilder.Build());
                 _commandCache.Add(instance.Name, instance);
             }
-            //await _client.BulkOverwriteGlobalApplicationCommandsAsync(commandList.ToArray());
+            await _client.BulkOverwriteGlobalApplicationCommandsAsync(commandList.ToArray());
         }
 
         public async Task SlashCommandHandler(SocketSlashCommand command)

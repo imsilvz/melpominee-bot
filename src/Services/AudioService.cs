@@ -7,14 +7,15 @@ using Discord.WebSocket;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Melpominee.Models;
 using Melpominee.Utility;
 using Microsoft.Extensions.Hosting;
+
 using File = System.IO.File;
-using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
+using static Melpominee.Models.AudioSource;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
@@ -222,23 +223,6 @@ namespace Melpominee.Services
             return true;
         }
 
-        public async Task<bool> StartVideo(SocketGuild guild, string videoUrl)
-        {
-            // Regex!
-            var rgx = Regex.Match(videoUrl, @"youtube\.com\/watch\?v=(.*?)(?:&|$)");
-            if (!rgx.Success)
-                return false;
-            string videoId = rgx.Groups[1].Value;
-
-            // queue next item
-            _ = Task.Run(async () =>
-            {
-                await StopPlayback(guild);
-                await PlayAudio(guild, $"https://www.youtube.com/watch?v={videoId}");
-            });
-            return true;
-        }
-
         public async Task<bool> StopPlayback(SocketGuild guild)
         {
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
@@ -251,51 +235,15 @@ namespace Melpominee.Services
             }
             return true;
         }
-        // yt-dlp -o - "https://www.youtube.com/watch?v=BYjt5E580PY" | ffmpeg -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1 | ffmpeg -f s16le -ac 2 -ar 48000 -i pipe:0 -c:a aac "C:\Users\rjyaw\Desktop\test.m4a"
-        private Process? GetFileProcess(string path)
-        {
-            return null;
-        }
 
-        private Process? GetNetworkProcess(string videoId)
-        {
-            var processFileName = "cmd.exe";
-            var processFileArgs = $"/C yt-dlp -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1";
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) 
-            {
-                processFileName = "/bin/sh";
-                processFileArgs = $"-c \"yt-dlp -o - https://www.youtube.com/watch?v={videoId} | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1\"";
-            }
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = processFileName,
-                Arguments = processFileArgs,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-            try
-            {
-                var process = Process.Start(processInfo);
-                if (process != null)
-                {
-                    process.EnableRaisingEvents = true;
-                    process.ErrorDataReceived += (sender, e) => { Console.WriteLine("ERROR!"); };
-                    return process;
-                }
-            }
-            catch
-            {
-                Console.WriteLine($"An error occurred while starting a network stream for {videoId}");
-            }
-            return null;
-        }
-
-        private async Task PlayAudio(SocketGuild guild, string videoUrl)
+        public async Task PlayAudio(SocketGuild guild, AudioSource audioSource)
         {
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return;
             var audioClient = connectionData.Client;
+
+            // stop previous playback, if any
+            await StopPlayback(guild);
 
             // Setup cancellation token to stop if needs be
             var cancellationTokenSource = connectionData.playbackCancellationToken;
@@ -306,43 +254,18 @@ namespace Melpominee.Services
             }
             var cancellationToken = cancellationTokenSource.Token;
 
-            // Regex!
-            var rgx = Regex.Match(videoUrl, @"youtube\.com\/watch\?v=(.*?)(?:&|$)");
-            if (!rgx.Success)
-                return;
-            string videoId = rgx.Groups[1].Value;
-
-            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var rootCachePath = Path.Combine(executingDirectory, "ytcache");
-            var cachePath = Path.Combine(rootCachePath, $"{videoId}.m4a");
-            Directory.CreateDirectory(rootCachePath);
-
-            Process? audioProcess = null;
-            if (File.Exists(cachePath))
-            { audioProcess = GetFileProcess(cachePath); }
-            if (audioProcess is null)
-            { audioProcess = GetNetworkProcess(videoId); }
-            if (audioProcess is null)
-            {
-                // unable to fetch stream, something is wrong!
-                Console.WriteLine("STREAM IS NULL");
-                return;
-            }
-
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    Console.WriteLine($"[{guild.Id}] Beginning playback for {videoUrl}");
-                    await _player.StartPlayback(audioClient, audioProcess.StandardOutput.BaseStream, cancellationToken);
+                    Console.WriteLine($"[{guild.Id}] Beginning playback for {audioSource.GetSource()}");
+                    await _player.StartPlayback(audioClient, audioSource, cancellationToken);
                 }
-                catch(OperationCanceledException)
+                catch (OperationCanceledException)
                 { }
                 finally
-                {
-                    if (audioProcess is not null && !audioProcess.HasExited)
-                        audioProcess.Kill();
-                    Console.WriteLine($"[{guild.Id}] Audio Process has been stopped for {videoUrl}");
+                { 
+                    audioSource.Dispose();
                 }
             });
         }
@@ -381,7 +304,7 @@ namespace Melpominee.Services
                 RedirectStandardOutput = true,
             }))
             using (var output = ffmpeg.StandardOutput.BaseStream)
-            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, 1920))
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music))
             {
                 int audioBufferSize = 1024;
                 byte[] audioBuffer = new byte[audioBufferSize];
