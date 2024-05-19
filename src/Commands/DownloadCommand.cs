@@ -68,6 +68,7 @@ namespace Melpominee.Commands
                     {
                         await _audioService.UploadPlaylist(playlistId);
                         await _audioService.ReloadPlaylists();
+                        Console.WriteLine(_audioService._playlistDict[playlistId].Count);
                     }
                     await command.FollowupAsync("Download complete!", ephemeral: true);
                     return;

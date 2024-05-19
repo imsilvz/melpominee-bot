@@ -31,7 +31,7 @@ namespace Melpominee.Services
         private AudioPlayer _player;
         private BlobServiceClient _serviceClient;
         private BlobContainerClient _containerClient;
-        private Dictionary<string, List<string>> _playlistDict; // contains file mapping for playlists
+        public Dictionary<string, List<string>> _playlistDict; // contains file mapping for playlists
         private Dictionary<string, string> _playlistIdDict; // contains id mapping for playlists
         private ConcurrentDictionary<ulong, AudioConnection> _connections;
         public AudioService()  
@@ -226,15 +226,14 @@ namespace Melpominee.Services
 
         public async Task<bool> StartPlaylist(SocketGuild guild, string playlistName)
         {
-            Console.WriteLine(playlistName);
             // fetch playlist id
             string? playlistId;
             if (!_playlistIdDict.TryGetValue(playlistName, out playlistId))
                 return false;
-            Console.WriteLine(playlistId);
             // queue next item
             _ = Task.Run(async () =>
             {
+                await StopPlayback(guild);
                 await PlayPlaylist(guild, playlistId);
             });
             return true;
@@ -288,9 +287,6 @@ namespace Melpominee.Services
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return;
             var audioClient = connectionData.Client;
-            Console.WriteLine("Pre-stop");
-            await StopPlayback(guild);
-            Console.WriteLine("Post-stop");
 
             var cancellationTokenSource = connectionData.playbackCancellationToken;
             if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
@@ -318,7 +314,7 @@ namespace Melpominee.Services
                 RedirectStandardOutput = true,
             }))
             using (var output = ffmpeg.StandardOutput.BaseStream)
-            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music))
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 100))
             {
                 int audioBufferSize = 1024;
                 byte[] audioBuffer = new byte[audioBufferSize];
