@@ -17,7 +17,7 @@ namespace Melpominee.Utility
 
             var client = conn.Client;
             var fileStream = source.GetStream();
-            using (var discordStream = client.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 100, packetLoss: 40))
+            using (var discordStream = client.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 250, packetLoss: 40))
             {
                 int bufferSize = 1024;
                 byte[] readBuffer = new byte[bufferSize];
@@ -25,11 +25,13 @@ namespace Melpominee.Utility
 
                 try
                 {
-                    while (client.ConnectionState == ConnectionState.Connected)
+                    while (true)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        if (discordStream is null)
+                            throw new Exception("Discord stream is has been broken!");
 
-                        if (fileStream is null || discordStream is null) break;
+                        if (fileStream is null) break;
                         int bytesRead = await fileStream.ReadAsync(readBuffer, 0, bufferSize, cancellationToken);
                         if (bytesRead <= 0)
                         {

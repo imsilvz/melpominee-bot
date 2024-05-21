@@ -7,9 +7,7 @@ using Discord.WebSocket;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Melpominee.Models;
 using Melpominee.Utility;
 using Microsoft.Extensions.Hosting;
@@ -205,13 +203,15 @@ namespace Melpominee.Services
                 Guild = channel.Guild,
                 AudioQueue = new ConcurrentQueue<AudioSource>(),
                 PlaybackStatus = PlaybackStatus.Idle,
-                playbackCancellationToken = new CancellationTokenSource(),
+                PlaybackCancellationToken = new CancellationTokenSource(),
             };
             _connections.AddOrUpdate(channel.GuildId, connectionModel, (key, oldVal) =>
             {
                 oldVal.Client.Dispose();
                 return connectionModel;
             });
+            audioClient.Connected += connectionModel.OnConnected;
+            audioClient.Disconnected += connectionModel.OnDisconnected;
             return true;
         }
         
@@ -243,7 +243,7 @@ namespace Melpominee.Services
         {
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return false;
-            connectionData.playbackCancellationToken.Cancel();
+            connectionData.PlaybackCancellationToken.Cancel();
             while(connectionData is not null) 
             {
                 if (connectionData.PlaybackStatus != PlaybackStatus.Playing) break;
@@ -259,11 +259,11 @@ namespace Melpominee.Services
             var audioClient = connectionData.Client;
 
             // Setup cancellation token to stop if needs be
-            var cancellationTokenSource = connectionData.playbackCancellationToken;
+            var cancellationTokenSource = connectionData.PlaybackCancellationToken;
             if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
             {
                 cancellationTokenSource = new CancellationTokenSource();
-                connectionData.playbackCancellationToken = cancellationTokenSource;
+                connectionData.PlaybackCancellationToken = cancellationTokenSource;
             }
             var cancellationToken = cancellationTokenSource.Token;
 
@@ -288,11 +288,11 @@ namespace Melpominee.Services
                 return;
             var audioClient = connectionData.Client;
 
-            var cancellationTokenSource = connectionData.playbackCancellationToken;
+            var cancellationTokenSource = connectionData.PlaybackCancellationToken;
             if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
             {
                 cancellationTokenSource = new CancellationTokenSource();
-                connectionData.playbackCancellationToken = cancellationTokenSource;
+                connectionData.PlaybackCancellationToken = cancellationTokenSource;
             }
             var cancellationToken = cancellationTokenSource.Token;
 
@@ -314,7 +314,7 @@ namespace Melpominee.Services
                 RedirectStandardOutput = true,
             }))
             using (var output = ffmpeg.StandardOutput.BaseStream)
-            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 100, packetLoss: 40))
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 250, packetLoss: 40))
             {
                 int audioBufferSize = 1024;
                 byte[] audioBuffer = new byte[audioBufferSize];

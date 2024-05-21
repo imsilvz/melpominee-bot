@@ -39,9 +39,13 @@ namespace Melpominee.Commands
 
             // connect
             if (await _audioService.Connect(voiceChannel))
+            {
                 await command.RespondAsync($"Successfully joined voice channel \'{voiceChannel.Name}\'!", ephemeral: true);
+            }
             else
+            {
                 await command.RespondAsync("Failed to join voice channel.", ephemeral: true);
+            }
         }
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
