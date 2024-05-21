@@ -314,7 +314,7 @@ namespace Melpominee.Services
                 RedirectStandardOutput = true,
             }))
             using (var output = ffmpeg.StandardOutput.BaseStream)
-            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 100))
+            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 100, packetLoss: 40))
             {
                 int audioBufferSize = 1024;
                 byte[] audioBuffer = new byte[audioBufferSize];
