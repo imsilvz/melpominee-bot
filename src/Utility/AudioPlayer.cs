@@ -17,44 +17,39 @@ namespace Melpominee.Utility
 
             var client = conn.Client;
             var fileStream = source.GetStream();
-            using (var discordStream = client.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 250, packetLoss: 40))
+            try
             {
                 int bufferSize = 1024;
                 byte[] readBuffer = new byte[bufferSize];
                 byte[] writeBuffer = new byte[bufferSize];
-
-                try
+                while (true)
                 {
-                    while (true)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        if (discordStream is null)
-                            throw new Exception("Discord stream is has been broken!");
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                        if (fileStream is null) break;
-                        int bytesRead = await fileStream.ReadAsync(readBuffer, 0, bufferSize, cancellationToken);
-                        if (bytesRead <= 0)
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            Buffer.BlockCopy(readBuffer, 0, writeBuffer, 0, bytesRead);
-                            await discordStream.WriteAsync(writeBuffer, 0, bytesRead, cancellationToken);
-                        }
+                    if (fileStream is null) break;
+                    int bytesRead = await fileStream.ReadAsync(readBuffer, 0, bufferSize, cancellationToken);
+                    if (bytesRead <= 0)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        Buffer.BlockCopy(readBuffer, 0, writeBuffer, 0, bytesRead);
+                        if (conn.DiscordPCMStream != null)
+                            await conn.DiscordPCMStream.WriteAsync(writeBuffer, 0, bytesRead, cancellationToken);
                     }
                 }
-                catch (OperationCanceledException) { throw; }
-                finally
+            }
+            catch (OperationCanceledException) { throw; }
+            finally
+            {
+                if (conn.DiscordPCMStream != null)
+                    await conn.DiscordPCMStream.FlushAsync();
+                // fire event handler
+                _ = Task.Run(() =>
                 {
-                    await discordStream.FlushAsync();
-
-                    // fire event handler
-                    _ = Task.Run(() =>
-                    {
-                        PlaybackFinished?.Invoke(this, conn);
-                    });
-                }
+                    PlaybackFinished?.Invoke(this, conn);
+                });
             }
         }
     }

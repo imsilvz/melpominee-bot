@@ -14,6 +14,8 @@ using Microsoft.Extensions.Hosting;
 
 using File = System.IO.File;
 using static Melpominee.Models.AudioSource;
+using System.Threading.Channels;
+using System;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
@@ -195,23 +197,13 @@ namespace Melpominee.Services
 
         public async Task<bool> Connect(IVoiceChannel channel, bool deaf=true, bool mute=false)
         {
-            var audioClient = await channel.ConnectAsync(deaf, mute, false);
-            var connectionModel = new AudioConnection
-            { 
-                Client = audioClient,
-                Channel = channel,
-                Guild = channel.Guild,
-                AudioQueue = new ConcurrentQueue<AudioSource>(),
-                PlaybackStatus = PlaybackStatus.Idle,
-                PlaybackCancellationToken = new CancellationTokenSource(),
-            };
-            _connections.AddOrUpdate(channel.GuildId, connectionModel, (key, oldVal) =>
+            var audioConn = new AudioConnection(channel);
+            await audioConn.Connect(deaf, mute);
+            _connections.AddOrUpdate(channel.GuildId, audioConn, (key, oldVal) =>
             {
-                oldVal.Client.Dispose();
-                return connectionModel;
+                oldVal.Disconnect().ConfigureAwait(false);
+                return audioConn;
             });
-            audioClient.Connected += connectionModel.OnConnected;
-            audioClient.Disconnected += connectionModel.OnDisconnected;
             return true;
         }
         
@@ -219,8 +211,7 @@ namespace Melpominee.Services
         {
             if (!_connections.TryRemove(guild.Id, out var connection))
                 return false;
-            await connection.Client.StopAsync();
-            connection.Client.Dispose();
+            await connection.Disconnect();
             return true;
         }
 
@@ -256,7 +247,6 @@ namespace Melpominee.Services
         {
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return;
-            var audioClient = connectionData.Client;
 
             // Setup cancellation token to stop if needs be
             var cancellationTokenSource = connectionData.PlaybackCancellationToken;
@@ -286,7 +276,6 @@ namespace Melpominee.Services
 
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return;
-            var audioClient = connectionData.Client;
 
             var cancellationTokenSource = connectionData.PlaybackCancellationToken;
             if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
@@ -314,7 +303,6 @@ namespace Melpominee.Services
                 RedirectStandardOutput = true,
             }))
             using (var output = ffmpeg.StandardOutput.BaseStream)
-            using (var discord = audioClient.CreatePCMStream(AudioApplication.Music, bitrate: 128 * 1024, bufferMillis: 250, packetLoss: 40))
             {
                 int audioBufferSize = 1024;
                 byte[] audioBuffer = new byte[audioBufferSize];
@@ -323,10 +311,7 @@ namespace Melpominee.Services
                 try
                 {
                     connectionData.PlaybackStatus = PlaybackStatus.Playing;
-                    while (
-                        audioClient.ConnectionState == ConnectionState.Connected &&
-                        !shouldExit
-                    )
+                    while (!shouldExit)
                     {
                         int bytesRead = await output.ReadAsync(audioBuffer, 0, audioBufferSize, cancellationToken);
 
@@ -337,14 +322,16 @@ namespace Melpominee.Services
                             break;
                         }
 
-                        await discord.WriteAsync(audioBuffer, 0, bytesRead, cancellationToken);
+                        if (connectionData.DiscordPCMStream != null)
+                            await connectionData.DiscordPCMStream.WriteAsync(audioBuffer, 0, bytesRead, cancellationToken);
                     }
                 }
                 catch (OperationCanceledException) { cancelled = true; }
                 catch { connectionData.PlaybackStatus = PlaybackStatus.Error; }
                 finally
                 {
-                    await discord.FlushAsync();
+                    if (connectionData.DiscordPCMStream != null)
+                        await connectionData.DiscordPCMStream.FlushAsync();
                     if (cancelled)
                         connectionData.PlaybackStatus = PlaybackStatus.Idle;
                     else if (connectionData.PlaybackStatus == PlaybackStatus.Playing)
