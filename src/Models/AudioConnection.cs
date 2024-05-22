@@ -14,13 +14,6 @@ namespace Melpominee.Models
         public required ConcurrentQueue<AudioSource> AudioQueue { get; set; }
         public AudioService.PlaybackStatus PlaybackStatus { get; set; } = AudioService.PlaybackStatus.Unknown;
         public required CancellationTokenSource PlaybackCancellationToken { get; set; }
-        public async Task Reconnect()
-        {
-            var audioClient = await Channel.ConnectAsync(true, false, false);
-            audioClient.Connected += OnConnected;
-            audioClient.Disconnected += OnDisconnected;
-            Client = audioClient;
-        }
 
         public Task OnConnected()
         {
@@ -39,13 +32,6 @@ namespace Melpominee.Models
                 // Attempt reconnect!
                 var currentUser = await Guild.GetCurrentUserAsync();
                 Console.WriteLine($"{Channel.Id} -> {currentUser.VoiceChannel.Id}");
-                /*if (Channel.Id != currentUser.VoiceChannel.Id)
-                {
-                    // bot has moved channels!
-                    Channel = currentUser.VoiceChannel;
-                }
-                await Task.Delay(250);
-                await Reconnect();*/
             }
         }
     }
