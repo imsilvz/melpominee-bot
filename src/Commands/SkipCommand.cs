@@ -25,7 +25,7 @@ namespace Melpominee.src.Commands
             await command.DeferAsync(ephemeral: true);
             _ = Task.Run(async () =>
             {
-                if (await _audioService.StopPlayback(commandGuild))
+                if (await _audioService.StopPlayback(commandGuild, false))
                 {
                     await command.FollowupAsync("Okay!", ephemeral: true);
                     return;

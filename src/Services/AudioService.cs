@@ -231,16 +231,19 @@ namespace Melpominee.Services
             return true;
         }
 
-        public async Task<bool> StopPlayback(SocketGuild guild)
+        public async Task<bool> StopPlayback(SocketGuild guild, bool waitForIdle = true)
         {
             if (!_connections.TryGetValue(guild.Id, out var audioConn))
                     return false;
 
             audioConn.PlaybackCancellationToken.Cancel();
-            while(audioConn is not null) 
+            if (waitForIdle)
             {
-                if (audioConn.PlaybackStatus == PlaybackStatus.Idle) break;
-                await Task.Delay(1);
+                while (audioConn is not null)
+                {
+                    if (audioConn.PlaybackStatus == PlaybackStatus.Idle) break;
+                    await Task.Delay(1);
+                }
             }
             return true;
         }
@@ -335,20 +338,13 @@ namespace Melpominee.Services
         private void QueueHandler(object? sender, AudioConnection audioConn)
         {
             var guild = audioConn.Guild;
-            if (audioConn.PlaybackStatus != PlaybackStatus.Cancelled)
+            if (audioConn.AudioQueue.TryDequeue(out var audioSource))
             {
-                if (audioConn.AudioQueue.TryDequeue(out var audioSource))
+                audioConn.PlaybackStatus = PlaybackStatus.Playing;
+                _ = Task.Run(async () =>
                 {
-                    audioConn.PlaybackStatus = PlaybackStatus.Playing;
-                    _ = Task.Run(async () =>
-                    {
-                        await PlayAudio((SocketGuild)guild, audioSource);
-                    });
-                }
-                else
-                {
-                    audioConn.PlaybackStatus = PlaybackStatus.Idle;
-                }
+                    await PlayAudio((SocketGuild)guild, audioSource);
+                });
             }
             else
             {
