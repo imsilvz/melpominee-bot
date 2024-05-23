@@ -222,9 +222,9 @@ namespace Melpominee.Services
             if (!_playlistIdDict.TryGetValue(playlistName, out playlistId))
                 return false;
             // queue next item
+            await StopPlayback(guild);
             _ = Task.Run(async () =>
             {
-                await StopPlayback(guild);
                 await PlayPlaylist(guild, playlistId);
             });
             return true;
@@ -232,12 +232,12 @@ namespace Melpominee.Services
 
         public async Task<bool> StopPlayback(SocketGuild guild)
         {
-            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+            if (!_connections.TryGetValue(guild.Id, out var audioConn))
                 return false;
-            connectionData.PlaybackCancellationToken.Cancel();
-            while(connectionData is not null) 
+            audioConn.PlaybackCancellationToken.Cancel();
+            while(audioConn is not null) 
             {
-                if (connectionData.PlaybackStatus != PlaybackStatus.Playing) break;
+                if (audioConn.PlaybackStatus != PlaybackStatus.Playing) break;
                 await Task.Delay(1);
             }
             return true;
@@ -245,22 +245,12 @@ namespace Melpominee.Services
 
         public async Task PlayAudio(SocketGuild guild, AudioSource audioSource)
         {
-            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+            if (!_connections.TryGetValue(guild.Id, out var audioConn))
                 return;
-
-            // Setup cancellation token to stop if needs be
-            var cancellationTokenSource = connectionData.PlaybackCancellationToken;
-            if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
-            {
-                cancellationTokenSource = new CancellationTokenSource();
-                connectionData.PlaybackCancellationToken = cancellationTokenSource;
-            }
-            var cancellationToken = cancellationTokenSource.Token;
-
             try
             {
                 Console.WriteLine($"[{guild.Id}] Beginning playback for {audioSource.GetSource()}");
-                await _player.StartPlayback(connectionData, audioSource, cancellationToken);
+                await _player.StartPlayback(audioConn, audioSource);
             }
             catch (OperationCanceledException)
             { }
@@ -270,79 +260,28 @@ namespace Melpominee.Services
             }
         }
 
-        private async Task PlayPlaylist(SocketGuild guild, string playlistId, int playlistIndex = 0)
+        private async Task PlayPlaylist(SocketGuild guild, string playlistId)
         {
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
 
-            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+            if (!_connections.TryGetValue(guild.Id, out var _))
                 return;
 
-            var cancellationTokenSource = connectionData.PlaybackCancellationToken;
-            if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
-            {
-                cancellationTokenSource = new CancellationTokenSource();
-                connectionData.PlaybackCancellationToken = cancellationTokenSource;
-            }
-            var cancellationToken = cancellationTokenSource.Token;
-
-            // generate path
             var playlistFileList = _playlistDict[playlistId];
             if (playlistFileList is null || playlistFileList.Count == 0)
                 return;
-            if (!(playlistFileList.Count > playlistIndex))
-                playlistIndex = 0;
-            var audioFileName = _playlistDict[playlistId][playlistIndex];
-            var audioPath = Path.Combine(executingDirectory, "assets", playlistId, audioFileName);
 
-            // spin up process
-            using (var ffmpeg = Process.Start(new ProcessStartInfo
+            ClearAudioQueue(guild);
+            foreach(var audioFileName in playlistFileList) 
             {
-                FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel panic -i \"{audioPath}\" -f s16le -ac 2 -ar 48000 pipe:1",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-            }))
-            using (var output = ffmpeg.StandardOutput.BaseStream)
-            {
-                int audioBufferSize = 1024;
-                byte[] audioBuffer = new byte[audioBufferSize];
-                bool shouldExit = false;
-                bool cancelled = false;
-                try
-                {
-                    connectionData.PlaybackStatus = PlaybackStatus.Playing;
-                    while (!shouldExit)
-                    {
-                        int bytesRead = await output.ReadAsync(audioBuffer, 0, audioBufferSize, cancellationToken);
-
-                        // if no more data, exit
-                        if (bytesRead <= 0)
-                        {
-                            shouldExit = true;
-                            break;
-                        }
-
-                        if (connectionData.DiscordPCMStream != null)
-                            await connectionData.DiscordPCMStream.WriteAsync(audioBuffer, 0, bytesRead, cancellationToken);
-                    }
-                }
-                catch (OperationCanceledException) { cancelled = true; }
-                catch { connectionData.PlaybackStatus = PlaybackStatus.Error; }
-                finally
-                {
-                    if (connectionData.DiscordPCMStream != null)
-                        await connectionData.DiscordPCMStream.FlushAsync();
-                    if (cancelled)
-                        connectionData.PlaybackStatus = PlaybackStatus.Idle;
-                    else if (connectionData.PlaybackStatus == PlaybackStatus.Playing)
-                    {
-                        // continue to next track!
-                        _ = Task.Run(async () =>
-                        {
-                            await PlayPlaylist(guild, playlistId, playlistIndex + 1);
-                        });
-                    }
-                }
+                var audioFilePath = Path.Combine(
+                    executingDirectory, 
+                    "assets", 
+                    playlistId, 
+                    audioFileName
+                );
+                var audioSource = new AudioSource(SourceType.Local, audioFilePath);
+                await QueueAudio(guild, audioSource);
             }
         }
 
@@ -358,7 +297,6 @@ namespace Melpominee.Services
             if (!_connections.TryGetValue(guild.Id, out var connectionData))
                 return;
 
-            // e
             Task cacheTask;
             if (!audioSource.GetCached())
                 cacheTask = audioSource.Precache();

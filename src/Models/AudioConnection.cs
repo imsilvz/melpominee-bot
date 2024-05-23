@@ -11,6 +11,7 @@ namespace Melpominee.Models
         public IAudioClient? Client { get; set; }
         public IVoiceChannel Channel { get; set; }
         public IGuild Guild { get; set; }
+        public bool LoopQueue { get; set; } = false;
         public ConcurrentQueue<AudioSource> AudioQueue { get; set; }
         public AudioService.PlaybackStatus PlaybackStatus { get; set; } = AudioService.PlaybackStatus.Unknown;
         public AudioOutStream? DiscordPCMStream { get; set; }

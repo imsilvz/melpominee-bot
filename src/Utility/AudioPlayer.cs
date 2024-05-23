@@ -11,10 +11,21 @@ namespace Melpominee.Utility
     public class AudioPlayer
     {
         public event EventHandler<AudioConnection>? PlaybackFinished;
-        public async Task StartPlayback(AudioConnection conn, AudioSource source, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task StartPlayback(AudioConnection conn, AudioSource source)
         {
+            // update playback status
             conn.PlaybackStatus = PlaybackStatus.Playing;
 
+            // Setup cancellation token to stop if needs be
+            var cancellationTokenSource = conn.PlaybackCancellationToken;
+            if (cancellationTokenSource.IsCancellationRequested || !cancellationTokenSource.TryReset())
+            {
+                cancellationTokenSource = new CancellationTokenSource();
+                conn.PlaybackCancellationToken = cancellationTokenSource;
+            }
+            var cancellationToken = cancellationTokenSource.Token;
+
+            // begin playback
             var client = conn.Client;
             var fileStream = source.GetStream();
             try
