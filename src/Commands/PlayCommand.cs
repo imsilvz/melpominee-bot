@@ -67,6 +67,15 @@ namespace Melpominee.Commands
                 audioSource = new AudioSource(AudioSource.SourceType.Networked, videoId);
                 _ = Task.Run(async () =>
                 {
+                    var currentChannel = commandGuild.CurrentUser.VoiceChannel;
+                    if (currentChannel == null)
+                    {
+                        var guildUser = (IGuildUser?)await command.Channel.GetUserAsync(command.User.Id);
+                        var voiceChannel = guildUser?.VoiceChannel;
+                        if (voiceChannel != null)
+                            await _audioService.Connect(voiceChannel);
+                    }
+
                     await _audioService.StopPlayback(commandGuild);
                     await _audioService.PlayAudio(commandGuild, audioSource);
                 });

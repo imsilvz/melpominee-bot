@@ -195,7 +195,7 @@ namespace Melpominee.Services
             return null;
         }
 
-        public async Task<bool> Connect(IVoiceChannel channel, bool deaf=true, bool mute=false)
+        public async Task<AudioConnection> Connect(IVoiceChannel channel, bool deaf=true, bool mute=false)
         {
             var audioConn = new AudioConnection(channel);
             await audioConn.Connect(deaf, mute);
@@ -204,7 +204,7 @@ namespace Melpominee.Services
                 oldVal.Disconnect().ConfigureAwait(false);
                 return audioConn;
             });
-            return true;
+            return audioConn;
         }
         
         public async Task<bool> Disconnect(IGuild guild)
@@ -233,7 +233,18 @@ namespace Melpominee.Services
         public async Task<bool> StopPlayback(SocketGuild guild)
         {
             if (!_connections.TryGetValue(guild.Id, out var audioConn))
-                return false;
+            {
+                var currChannel = guild.CurrentUser.VoiceChannel;
+                if (guild.CurrentUser.VoiceChannel != null)
+                {
+                    audioConn = await Connect(currChannel);
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
             audioConn.PlaybackCancellationToken.Cancel();
             while(audioConn is not null) 
             {
@@ -246,7 +257,19 @@ namespace Melpominee.Services
         public async Task PlayAudio(SocketGuild guild, AudioSource audioSource)
         {
             if (!_connections.TryGetValue(guild.Id, out var audioConn))
-                return;
+            {
+                var currChannel = guild.CurrentUser.VoiceChannel;
+                if (guild.CurrentUser.VoiceChannel != null)
+                {
+                    audioConn = await Connect(currChannel);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            await audioConn.EnsureConnection();
+
             try
             {
                 Console.WriteLine($"[{guild.Id}] Beginning playback for {audioSource.GetSource()}");

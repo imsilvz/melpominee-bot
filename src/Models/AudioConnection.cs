@@ -27,17 +27,18 @@ namespace Melpominee.Models
             PlaybackCancellationToken = new CancellationTokenSource();
         }
 
-        public async Task Connect(bool deaf, bool mute)
+        public async Task Connect(bool deaf = true, bool mute = false)
         {
-            var audioClient = await Channel.ConnectAsync(deaf, mute, false);
-            audioClient.Connected += OnConnected;
-            audioClient.Disconnected += OnDisconnected;
-            DiscordPCMStream = audioClient.CreatePCMStream(
+            Client = await Channel.ConnectAsync(deaf, mute, false);
+            Client.Connected += OnConnected;
+            Client.Disconnected += OnDisconnected;
+            DiscordPCMStream = Client.CreatePCMStream(
                 AudioApplication.Music,
                 bitrate: 128 * 1024,
                 bufferMillis: 250,
                 packetLoss: 40
             );
+            PlaybackCancellationToken = new CancellationTokenSource();
         }
 
         public Task OnConnected()
@@ -64,6 +65,15 @@ namespace Melpominee.Models
                 // Attempt reconnect!
                 var currentUser = await Guild.GetCurrentUserAsync();
                 Console.WriteLine($"{Channel.Id} -> {currentUser.VoiceChannel.Id}");
+            }
+        }
+
+        public async Task EnsureConnection()
+        {
+            if ((Client == null) || (Client.ConnectionState == ConnectionState.Disconnected))
+            {
+                Dispose();
+                await Connect();
             }
         }
 

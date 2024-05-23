@@ -38,7 +38,7 @@ namespace Melpominee.Commands
             }
 
             // connect
-            if (await _audioService.Connect(voiceChannel))
+            if ((await _audioService.Connect(voiceChannel)) != null)
             {
                 await command.RespondAsync($"Successfully joined voice channel \'{voiceChannel.Name}\'!", ephemeral: true);
             }
