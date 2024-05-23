@@ -164,12 +164,14 @@ namespace Melpominee.Models
         private Process? GetFileProcess(string path)
         {
             if (!File.Exists(path))
+            {
                 return null;
+            }
 
             var processInfo = new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-loglevel panic -i {path} -f s16le -ac 2 -ar 48000 pipe:1",
+                Arguments = $"-loglevel panic -i \"{path}\" -f s16le -ac 2 -ar 48000 pipe:1",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 CreateNoWindow = true
@@ -179,8 +181,6 @@ namespace Melpominee.Models
                 var process = Process.Start(processInfo);
                 if (process != null)
                 {
-                    process.EnableRaisingEvents = true;
-                    process.ErrorDataReceived += (sender, e) => { Console.WriteLine("ERROR!"); };
                     return process;
                 }
             }

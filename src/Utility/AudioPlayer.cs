@@ -37,7 +37,8 @@ namespace Melpominee.Utility
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (fileStream is null) break;
+                    if (fileStream is null)
+                        break;
                     int bytesRead = await fileStream.ReadAsync(readBuffer, 0, bufferSize, cancellationToken);
                     if (bytesRead <= 0)
                     {
