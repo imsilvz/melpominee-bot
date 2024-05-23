@@ -70,7 +70,11 @@ namespace Melpominee.Models
 
         public async Task EnsureConnection()
         {
-            if ((Client == null) || (Client.ConnectionState == ConnectionState.Disconnected))
+            if (
+                Client == null || 
+                Client.ConnectionState == ConnectionState.Disconnected || 
+                DiscordPCMStream == null
+                )
             {
                 Dispose();
                 await Connect();
