@@ -301,14 +301,14 @@ namespace Melpominee.Services
 
         public void ClearAudioQueue(SocketGuild guild)
         {
-            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+            if (!_connections.TryGetValue(guild.Id, out var audioConn))
                 return;
-            connectionData.AudioQueue.Clear();
+            audioConn.AudioQueue.Clear();
         }
 
         public async Task QueueAudio(SocketGuild guild, AudioSource audioSource)
         {
-            if (!_connections.TryGetValue(guild.Id, out var connectionData))
+            if (!_connections.TryGetValue(guild.Id, out var audioConn))
                 return;
 
             Task cacheTask;
@@ -317,24 +317,29 @@ namespace Melpominee.Services
             else
                 cacheTask = Task.CompletedTask;
 
-            if (connectionData.PlaybackStatus != PlaybackStatus.Playing)
+            if (audioConn.PlaybackStatus == PlaybackStatus.Idle && audioConn.AudioQueue.Count <= 0)
             {
-                await PlayAudio(guild, audioSource);
+                audioConn.PlaybackStatus = PlaybackStatus.Playing;
+                _ = Task.Run(async () =>
+                {
+                    await PlayAudio(guild, audioSource);
+                });
             }
             else
             {
-                connectionData.AudioQueue.Enqueue(audioSource);
+                audioConn.AudioQueue.Enqueue(audioSource);
             }
             await cacheTask;
         }
 
-        private void QueueHandler(object? sender, AudioConnection audioConnection)
+        private void QueueHandler(object? sender, AudioConnection audioConn)
         {
-            var guild = audioConnection.Guild;
-            if (audioConnection.PlaybackStatus != PlaybackStatus.Cancelled)
+            var guild = audioConn.Guild;
+            if (audioConn.PlaybackStatus != PlaybackStatus.Cancelled)
             {
-                if (audioConnection.AudioQueue.TryDequeue(out var audioSource))
+                if (audioConn.AudioQueue.TryDequeue(out var audioSource))
                 {
+                    audioConn.PlaybackStatus = PlaybackStatus.Playing;
                     _ = Task.Run(async () =>
                     {
                         await PlayAudio((SocketGuild)guild, audioSource);
@@ -342,12 +347,12 @@ namespace Melpominee.Services
                 }
                 else
                 {
-                    audioConnection.PlaybackStatus = PlaybackStatus.Idle;
+                    audioConn.PlaybackStatus = PlaybackStatus.Idle;
                 }
             }
             else
             {
-                audioConnection.PlaybackStatus = PlaybackStatus.Idle;
+                audioConn.PlaybackStatus = PlaybackStatus.Idle;
             }
         }
 
