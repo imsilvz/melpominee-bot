@@ -22,10 +22,11 @@ namespace Melpominee.Services
     {
         public enum PlaybackStatus
         {
-            Unknown = 0,
-            Idle    = 1,
-            Playing = 2,
-            Error   = 3,
+            Unknown     = 0,
+            Idle        = 1,
+            Playing     = 2,
+            Cancelled   = 3,
+            Error       = 4,
         }
 
         private AudioPlayer _player;
@@ -233,22 +234,12 @@ namespace Melpominee.Services
         public async Task<bool> StopPlayback(SocketGuild guild)
         {
             if (!_connections.TryGetValue(guild.Id, out var audioConn))
-            {
-                var currChannel = guild.CurrentUser.VoiceChannel;
-                if (guild.CurrentUser.VoiceChannel != null)
-                {
-                    audioConn = await Connect(currChannel);
-                }
-                else
-                {
                     return false;
-                }
-            }
 
             audioConn.PlaybackCancellationToken.Cancel();
             while(audioConn is not null) 
             {
-                if (audioConn.PlaybackStatus != PlaybackStatus.Playing) break;
+                if (audioConn.PlaybackStatus == PlaybackStatus.Idle) break;
                 await Task.Delay(1);
             }
             return true;
@@ -340,12 +331,19 @@ namespace Melpominee.Services
         private void QueueHandler(object? sender, AudioConnection audioConnection)
         {
             var guild = audioConnection.Guild;
-            if (audioConnection.AudioQueue.TryDequeue(out var audioSource))
+            if (audioConnection.PlaybackStatus != PlaybackStatus.Cancelled)
             {
-                _ = Task.Run(async () =>
+                if (audioConnection.AudioQueue.TryDequeue(out var audioSource))
                 {
-                    await PlayAudio((SocketGuild)guild, audioSource);
-                });
+                    _ = Task.Run(async () =>
+                    {
+                        await PlayAudio((SocketGuild)guild, audioSource);
+                    });
+                }
+                else
+                {
+                    audioConnection.PlaybackStatus = PlaybackStatus.Idle;
+                }
             }
             else
             {

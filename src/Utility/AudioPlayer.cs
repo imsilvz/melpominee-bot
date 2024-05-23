@@ -52,16 +52,17 @@ namespace Melpominee.Utility
                     }
                 }
             }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) 
+            {
+                conn.PlaybackStatus = PlaybackStatus.Cancelled;
+                throw; 
+            }
             finally
             {
                 if (conn.DiscordPCMStream != null)
                     await conn.DiscordPCMStream.FlushAsync();
                 // fire event handler
-                _ = Task.Run(() =>
-                {
-                    PlaybackFinished?.Invoke(this, conn);
-                });
+                PlaybackFinished?.Invoke(this, conn);
             }
         }
     }
