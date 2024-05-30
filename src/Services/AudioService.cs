@@ -269,8 +269,6 @@ namespace Melpominee.Services
                 Console.WriteLine($"[{guild.Id}] Beginning playback for {audioSource.GetSource()}");
                 await _player.StartPlayback(audioConn, audioSource);
             }
-            catch (OperationCanceledException)
-            { }
             finally
             { 
                 audioSource.Dispose();

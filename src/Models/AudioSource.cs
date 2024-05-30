@@ -1,13 +1,6 @@
-﻿using Discord;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Melpominee.Models
 {
@@ -33,6 +26,7 @@ namespace Melpominee.Models
 
         public async Task<bool> Precache(string? playlistId = null)
         {
+            Console.WriteLine($"Beginning caching for {_sourcePath}");
             if (_sourceType == SourceType.Networked)
             {
                 _caching = true;
@@ -59,6 +53,7 @@ namespace Melpominee.Models
                 if (process is null)
                 {
                     _caching = false;
+                    Console.WriteLine($"Caching operation failed for {_sourcePath}");
                     return false;
                 }
 
@@ -71,6 +66,7 @@ namespace Melpominee.Models
                         File.Delete(cachePath);
                     }
                     _caching = false;
+                    Console.WriteLine($"Caching operation failed for {_sourcePath}");
                     return false;
                 }
             }
@@ -99,6 +95,7 @@ namespace Melpominee.Models
                 if (process is null)
                 {
                     _caching = false;
+                    Console.WriteLine($"Caching operation failed for {_sourcePath}");
                     return false;
                 }
 
@@ -111,10 +108,12 @@ namespace Melpominee.Models
                         File.Delete(filePath);
                     }
                     _caching = false;
+                    Console.WriteLine($"Caching operation failed for {_sourcePath}");
                     return false;
                 }
             }
             _caching = false;
+            Console.WriteLine($"Caching operation completed for {_sourcePath}");
             return true;
         }
          
@@ -124,6 +123,7 @@ namespace Melpominee.Models
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
             var rootCachePath = Path.Combine(executingDirectory, "ytcache");
             var cachePath = Path.Combine(rootCachePath, $"{_sourcePath}.m4a");
+            if (File.Exists(cachePath)) { Console.WriteLine($"Cache Hit: {cachePath}"); }
             return File.Exists(cachePath);
         }
 
