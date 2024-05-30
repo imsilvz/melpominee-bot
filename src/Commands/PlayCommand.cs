@@ -45,7 +45,8 @@ namespace Melpominee.Commands
             AudioSource audioSource;
             if(playlistName is not null)
             {
-                if (await _audioService.StartPlaylist(commandGuild, playlistName))
+                await _audioService.StopPlayback(commandGuild, true);
+                if (await _audioService.PlayPlaylist(commandGuild, playlistName))
                 {
                     await command.RespondAsync("Okay!", ephemeral: true);
                     return;
@@ -76,7 +77,7 @@ namespace Melpominee.Commands
                             await _audioService.Connect(voiceChannel);
                     }
 
-                    await _audioService.StopPlayback(commandGuild);
+                    await _audioService.StopPlayback(commandGuild, true);
                     await _audioService.PlayAudio(commandGuild, audioSource);
                 });
                 await command.RespondAsync($"Playback of `{parsedVideoUrl}` starting!", ephemeral: true);

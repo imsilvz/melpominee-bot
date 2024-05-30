@@ -132,6 +132,11 @@ namespace Melpominee.Models
             return _sourcePath;
         }
 
+        public SourceType GetSourceType()
+        {
+            return _sourceType;
+        }
+
         public Stream GetStream()
         {
             if (_streamProcess is null)

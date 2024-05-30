@@ -2,34 +2,19 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Discord;
-using Discord.Audio;
 using Discord.WebSocket;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Melpominee.Models;
-using Melpominee.Utility;
 using Microsoft.Extensions.Hosting;
 
 using File = System.IO.File;
 using static Melpominee.Models.AudioSource;
-using System.Threading.Channels;
-using System;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
     {
-        public enum PlaybackStatus
-        {
-            Unknown     = 0,
-            Idle        = 1,
-            Playing     = 2,
-            Cancelled   = 3,
-            Error       = 4,
-        }
-
-        private AudioPlayer _player;
         private BlobServiceClient _serviceClient;
         private BlobContainerClient _containerClient;
         public Dictionary<string, List<string>> _playlistDict; // contains file mapping for playlists
@@ -47,9 +32,6 @@ namespace Melpominee.Services
             _playlistDict = new Dictionary<string, List<string>>();
             _playlistIdDict = new Dictionary<string, string>();
             _connections = new ConcurrentDictionary<ulong, AudioConnection>();
-
-            _player = new AudioPlayer();
-            _player.PlaybackFinished += QueueHandler;
         }
 
         public async Task<string> CreatePlaylist(string name, bool upload = true)
@@ -216,35 +198,20 @@ namespace Melpominee.Services
             return true;
         }
 
-        public async Task<bool> StartPlaylist(SocketGuild guild, string playlistName)
+        public async Task<bool> SkipPlayback(SocketGuild guild)
         {
-            // fetch playlist id
-            string? playlistId;
-            if (!_playlistIdDict.TryGetValue(playlistName, out playlistId))
+            if (!_connections.TryGetValue(guild.Id, out var audioConn))
                 return false;
-            // queue next item
-            await StopPlayback(guild);
-            _ = Task.Run(async () =>
-            {
-                await PlayPlaylist(guild, playlistId);
-            });
+            await audioConn.StopPlayback(false);
             return true;
         }
 
-        public async Task<bool> StopPlayback(SocketGuild guild, bool waitForIdle = true)
+        public async Task<bool> StopPlayback(SocketGuild guild, bool waitForIdle = false)
         {
             if (!_connections.TryGetValue(guild.Id, out var audioConn))
                     return false;
-
-            audioConn.PlaybackCancellationToken.Cancel();
-            if (waitForIdle)
-            {
-                while (audioConn is not null)
-                {
-                    if (audioConn.PlaybackStatus == PlaybackStatus.Idle) break;
-                    await Task.Delay(1);
-                }
-            }
+            audioConn.ClearAudioQueue();
+            await audioConn.StopPlayback(waitForIdle);
             return true;
         }
 
@@ -262,31 +229,25 @@ namespace Melpominee.Services
                     return;
                 }
             }
-            await audioConn.EnsureConnection();
-
-            try
-            {
-                Console.WriteLine($"[{guild.Id}] Beginning playback for {audioSource.GetSource()}");
-                await _player.StartPlayback(audioConn, audioSource);
-            }
-            finally
-            { 
-                audioSource.Dispose();
-            }
+            await audioConn.QueueSource(audioSource, false);
+            await audioConn.StartPlayback();
         }
 
-        private async Task PlayPlaylist(SocketGuild guild, string playlistId)
+        public async Task<bool> PlayPlaylist(SocketGuild guild, string playlistName)
         {
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
 
-            if (!_connections.TryGetValue(guild.Id, out var _))
-                return;
+            string? playlistId;
+            if (!_playlistIdDict.TryGetValue(playlistName, out playlistId))
+                return false;
+
+            if (!_connections.TryGetValue(guild.Id, out var audioConn))
+                return false;
 
             var playlistFileList = _playlistDict[playlistId];
             if (playlistFileList is null || playlistFileList.Count == 0)
-                return;
+                return false;
 
-            ClearAudioQueue(guild);
             foreach(var audioFileName in playlistFileList) 
             {
                 var audioFilePath = Path.Combine(
@@ -296,58 +257,18 @@ namespace Melpominee.Services
                     audioFileName
                 );
                 var audioSource = new AudioSource(SourceType.Local, audioFilePath);
-                await QueueAudio(guild, audioSource);
+                await audioConn.QueueSource(audioSource, false);
             }
-        }
-
-        public void ClearAudioQueue(SocketGuild guild)
-        {
-            if (!_connections.TryGetValue(guild.Id, out var audioConn))
-                return;
-            audioConn.AudioQueue.Clear();
+            await audioConn.StartPlayback();
+            return true;
         }
 
         public async Task QueueAudio(SocketGuild guild, AudioSource audioSource)
         {
             if (!_connections.TryGetValue(guild.Id, out var audioConn))
                 return;
-
-            Task cacheTask;
-            if (!audioSource.GetCached())
-                cacheTask = audioSource.Precache();
-            else
-                cacheTask = Task.CompletedTask;
-
-            if (audioConn.PlaybackStatus == PlaybackStatus.Idle && audioConn.AudioQueue.Count <= 0)
-            {
-                audioConn.PlaybackStatus = PlaybackStatus.Playing;
-                _ = Task.Run(async () =>
-                {
-                    await PlayAudio(guild, audioSource);
-                });
-            }
-            else
-            {
-                audioConn.AudioQueue.Enqueue(audioSource);
-            }
-            await cacheTask;
-        }
-
-        private void QueueHandler(object? sender, AudioConnection audioConn)
-        {
-            var guild = audioConn.Guild;
-            if (audioConn.AudioQueue.TryDequeue(out var audioSource))
-            {
-                audioConn.PlaybackStatus = PlaybackStatus.Playing;
-                _ = Task.Run(async () =>
-                {
-                    await PlayAudio((SocketGuild)guild, audioSource);
-                });
-            }
-            else
-            {
-                audioConn.PlaybackStatus = PlaybackStatus.Idle;
-            }
+            await audioConn.QueueSource(audioSource, false);
+            await audioConn.StartPlayback();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
