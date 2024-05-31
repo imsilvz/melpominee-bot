@@ -69,6 +69,7 @@ namespace Melpominee.Models
         /* Playback Methods */
         public void ClearAudioQueue()
         {
+            LoopQueue = false;
             AudioQueue.Clear();
         }
 
@@ -101,7 +102,6 @@ namespace Melpominee.Models
 
         public async Task StopPlayback(bool waitForIdle = false)
         {
-            LoopQueue = false;
             PlaybackCancellationToken.Cancel();
             if (waitForIdle)
             {
@@ -137,21 +137,21 @@ namespace Melpominee.Models
         /* Misc */
         public void QueueHandler(object? sender, AudioSource? prevSource)
         {
+            // handle loop option
+            if (prevSource != null && LoopQueue)
+            {
+                QueueSource(
+                    new AudioSource(
+                        prevSource.GetSourceType(),
+                        prevSource.GetSource()
+                    ),
+                    false
+                ).ConfigureAwait(false);
+            }
+
+            // find next playback item
             if (AudioQueue.TryDequeue(out var audioSource))
             {
-                // handle loop option
-                if (prevSource != null && LoopQueue)
-                {
-                    QueueSource(
-                        new AudioSource(
-                            prevSource.GetSourceType(),
-                            prevSource.GetSource()
-                        ),
-                        false
-                    ).ConfigureAwait(false);
-                }
-
-                // delegate next playback item
                 Status = PlaybackStatus.Playing;
                 _ = Task.Run(async () =>
                 {

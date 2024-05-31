@@ -271,6 +271,14 @@ namespace Melpominee.Services
             await audioConn.StartPlayback();
         }
 
+        public bool SetQueueLoop(SocketGuild guild, bool toggle)
+        {
+            if (!_connections.TryGetValue(guild.Id, out var audioConn))
+                return false;
+            audioConn.LoopQueue = toggle;
+            return true;
+        }
+
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             await Initialize();
