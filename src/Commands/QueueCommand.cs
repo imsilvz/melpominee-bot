@@ -3,14 +3,8 @@ using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Models;
 using Melpominee.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-
-namespace Melpominee.src.Commands
+namespace Melpominee.Commands
 {
     public class QueueCommand : MelpomineeCommand
     {
@@ -66,7 +60,7 @@ namespace Melpominee.src.Commands
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
             builder.AddOption("url", ApplicationCommandOptionType.String, "URL of song to enqueue", isAutocomplete: false, isRequired: true);
-            builder.WithDMPermission(false);
+            builder.WithContextTypes([InteractionContextType.Guild]);
             return builder;
         }
     }

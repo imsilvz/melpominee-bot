@@ -3,12 +3,7 @@ using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Models;
 using Melpominee.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace Melpominee.Commands
 {
@@ -81,7 +76,7 @@ namespace Melpominee.Commands
         {
             builder.AddOption("url", ApplicationCommandOptionType.String, "URL to download", isAutocomplete: false, isRequired: true);
             builder.AddOption("playlist", ApplicationCommandOptionType.String, "Playlist to add to (or create!)", isAutocomplete: false, isRequired: false);
-            builder.WithDMPermission(false);
+            builder.WithContextTypes([InteractionContextType.Guild]);
             return builder;
         }
     }

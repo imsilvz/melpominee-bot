@@ -139,7 +139,7 @@ namespace Melpominee.Models
         {
             if (AudioQueue.TryDequeue(out var audioSource))
             {
-                // 
+                // handle loop option
                 if (prevSource != null && LoopQueue)
                 {
                     QueueSource(
@@ -151,6 +151,7 @@ namespace Melpominee.Models
                     ).ConfigureAwait(false);
                 }
 
+                // delegate next playback item
                 Status = PlaybackStatus.Playing;
                 _ = Task.Run(async () =>
                 {

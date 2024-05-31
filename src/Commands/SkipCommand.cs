@@ -2,8 +2,7 @@
 using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Services;
-
-namespace Melpominee.src.Commands
+namespace Melpominee.Commands
 {
     public class SkipCommand : MelpomineeCommand
     {
@@ -36,7 +35,7 @@ namespace Melpominee.src.Commands
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
-            builder.WithDMPermission(false);
+            builder.WithContextTypes([InteractionContextType.Guild]);
             return builder;
         }
     }

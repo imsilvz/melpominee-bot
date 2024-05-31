@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Melpominee.Abstractions;
-using Melpominee.Models;
 using Melpominee.Services;
 using Melpominee.Utility;
 namespace Melpominee.Commands

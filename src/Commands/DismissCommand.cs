@@ -32,7 +32,7 @@ namespace Melpominee.Commands
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
-            builder.WithDMPermission(false);
+            builder.WithContextTypes([InteractionContextType.Guild]);
             return builder;
         }
     }

@@ -1,10 +1,7 @@
 ﻿using Discord;
-using Discord.Audio;
 using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Services;
-using System.Diagnostics;
-using System.Reflection;
 namespace Melpominee.Commands
 {
     public class StopCommand : MelpomineeCommand
@@ -38,7 +35,7 @@ namespace Melpominee.Commands
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)
         {
-            builder.WithDMPermission(false);
+            builder.WithContextTypes([InteractionContextType.Guild]);
             return builder;
         }
     }

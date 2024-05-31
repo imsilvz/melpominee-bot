@@ -156,7 +156,7 @@ namespace Melpominee.Commands
                     ]);
                 builder.AddOption(optionBuilder);
             }
-            builder.WithDMPermission(false);
+            builder.WithContextTypes([InteractionContextType.Guild]);
             return builder;
         }
     }

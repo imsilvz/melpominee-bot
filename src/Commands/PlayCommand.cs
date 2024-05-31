@@ -1,12 +1,8 @@
 ﻿using Discord;
-using Discord.Audio;
 using Discord.WebSocket;
 using Melpominee.Abstractions;
 using Melpominee.Models;
 using Melpominee.Services;
-using System;
-using System.Diagnostics;
-using System.Reflection;
 using System.Text.RegularExpressions;
 namespace Melpominee.Commands
 {
@@ -90,7 +86,7 @@ namespace Melpominee.Commands
         {
             builder.AddOption("playlist", ApplicationCommandOptionType.String, "Playlist to play", isAutocomplete: true, isRequired: false);
             builder.AddOption("url", ApplicationCommandOptionType.String, "URL to play", isAutocomplete: false, isRequired: false);
-            builder.WithDMPermission(false);
+            builder.WithContextTypes([InteractionContextType.Guild]);
             return builder;
         }
     }
