@@ -4,7 +4,7 @@ on:
     branches:
       - master 
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 10 * * *'
 
 env:
   REGISTRY: ghcr.io
@@ -13,7 +13,7 @@ env:
 jobs:
   docker-build-push:
     name: Melpominee Bot Build & Push
-    runs-on: ubuntu-latest
+    runs-on: melpominee-bot-runner
     permissions:
       packages: write
       contents: read
@@ -44,30 +44,23 @@ jobs:
           file: ./Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          
+      - name: Setup Azure CLI
+        run: |
+          apt-get install curl -y
+          curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
-      # - name: Azure Login
-      #   uses: azure/login@v1
-      #   with:
-      #     creds: ${{ secrets.AZURE_SECRET }}
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_SECRET }}
 
-      # - name: Authenticate with AKS
-      #   run: |
-      #     az aks install-cli
-      #     az aks get-credentials -g ${{ vars.AZURE_GROUP }} --n ${{ vars.AZURE_CLUSTER }}
-
-      # - name: Allow GitHub Runner in AKS Authorized API Ranges
-      #   run: |
-      #     agentIP=$(curl -s https://api.ipify.org/)
-      #     az aks update -g ${{ vars.AZURE_GROUP }} -n ${{ vars.AZURE_CLUSTER }} --api-server-authorized-ip-ranges $agentIP/32,${{ secrets.IPADDR_WHITELIST }}
-      #     sleep 100
+      - name: Authenticate with AKS
+        run: |
+          az aks install-cli
+          az aks get-credentials -g ${{ vars.AZURE_GROUP }} --n ${{ vars.AZURE_CLUSTER }}
     
-      # - name: Apply Manifests
-      #   run: |
-      #     kubectl apply -f ./manifests/bot.yaml
-      #     kubectl rollout restart deployment melpominee-bot --namespace=melpominee
-    
-      # - name: Restore AKS Authorized API Ranges
-      #   run: |
-      #     agentIP=$(curl -s https://api.ipify.org/)
-      #     az aks update -g ${{ vars.AZURE_GROUP }} -n ${{ vars.AZURE_CLUSTER }} --api-server-authorized-ip-ranges ${{ secrets.IPADDR_WHITELIST }}
-      #   if: success() || failure()
+      - name: Apply Manifests
+        run: |
+          kubectl apply -f ./manifests/bot.yaml
+          kubectl rollout restart deployment melpominee-bot --namespace=melpominee

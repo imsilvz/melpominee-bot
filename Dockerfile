@@ -6,9 +6,11 @@ RUN apt-get install build-essential chrpath libssl-dev libxft-dev \
 				libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
 				bzip2 aspnetcore-runtime-8.0 libopus0 libopus-dev libsodium23 libsodium-dev -y
 
-RUN wget https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-4.2.2-amd64-static.tar.xz -O /tmp/ffmpeg.tar.xz
-RUN mkdir /tmp/ffmpeg-4.2.2-amd64-static && tar xvf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-4.2.2-amd64-static --strip-components=1
-RUN mv /tmp/ffmpeg-4.2.2-amd64-static/ffmpeg /usr/local/bin/ffmpeg && mv /tmp/ffmpeg-4.2.2-amd64-static/ffprobe /usr/local/bin/ffprobe
+#RUN wget https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-4.2.2-amd64-static.tar.xz -O /tmp/ffmpeg.tar.xz
+#RUN mkdir /tmp/ffmpeg-4.2.2-amd64-static && tar xvf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-4.2.2-amd64-static --strip-components=1
+#RUN mv /tmp/ffmpeg-4.2.2-amd64-static/ffmpeg /usr/local/bin/ffmpeg && mv /tmp/ffmpeg-4.2.2-amd64-static/ffprobe /usr/local/bin/ffprobe
+
+RUN apt-get install ffmpeg -y
 
 RUN wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
 RUN chmod a+rx /usr/local/bin/yt-dlp
