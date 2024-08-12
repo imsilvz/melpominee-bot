@@ -27,12 +27,8 @@ namespace Melpominee.Models
 
         public async Task<bool> Precache(string? playlistId = null)
         {
-            var proxyFull = "";
             var proxyAddr = SecretStore.Instance.GetSecret("MELPOMINEE_PROXY");
-            if (proxyAddr != "")
-            {
-                proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
-            }
+            var proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
 
             Console.WriteLine($"Beginning caching for {_sourcePath}");
             if (_sourceType == SourceType.Networked)
@@ -52,7 +48,7 @@ namespace Melpominee.Models
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp",
-                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} {proxyFull} -q -x --audio-format m4a --audio-quality 0 -o {cachePath}",
+                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} {proxyFull} -v -x --audio-format m4a --audio-quality 0 -o {cachePath}",
                     UseShellExecute = false,
                     RedirectStandardOutput = false,
                     CreateNoWindow = true
@@ -94,7 +90,7 @@ namespace Melpominee.Models
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp",
-                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} {proxyFull} -q -x --audio-format m4a --audio-quality 0 -o {filePath} --write-thumbnail --convert-thumbnails png -o thumbnail:{thumbPath}",
+                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} {proxyFull} -v -x --audio-format m4a --audio-quality 0 -o {filePath} --write-thumbnail --convert-thumbnails png -o thumbnail:{thumbPath}",
                     UseShellExecute = false,
                     RedirectStandardOutput = false,
                     CreateNoWindow = true
@@ -206,12 +202,8 @@ namespace Melpominee.Models
 
         private Process? GetNetworkProcess(string videoId)
         {
-            var proxyFull = "";
             var proxyAddr = SecretStore.Instance.GetSecret("MELPOMINEE_PROXY");
-            if (proxyAddr != "") 
-            {
-                proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
-            }
+            var proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
 
             var processFileName = "cmd.exe";
             var processFileArgs = $"/C yt-dlp {proxyFull} -q -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1";
