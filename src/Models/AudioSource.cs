@@ -44,7 +44,7 @@ namespace Melpominee.Models
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp",
-                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} -q -x --audio-format m4a --audio-quality 0 -o {cachePath}",
+                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} -6 -q -x --audio-format m4a --audio-quality 0 -o {cachePath}",
                     UseShellExecute = false,
                     RedirectStandardOutput = false,
                     CreateNoWindow = true
@@ -86,7 +86,7 @@ namespace Melpominee.Models
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = "yt-dlp",
-                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} -q -x --audio-format m4a --audio-quality 0 -o {filePath} --write-thumbnail --convert-thumbnails png -o thumbnail:{thumbPath}",
+                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} -6 -q -x --audio-format m4a --audio-quality 0 -o {filePath} --write-thumbnail --convert-thumbnails png -o thumbnail:{thumbPath}",
                     UseShellExecute = false,
                     RedirectStandardOutput = false,
                     CreateNoWindow = true
