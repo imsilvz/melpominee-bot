@@ -101,9 +101,13 @@ namespace Melpominee.Models
                     }
                     else
                     {
-                        Console.WriteLine($"Beginning upload of cached item ({_sourcePath}.m4a)");
-                        await blobClient.UploadAsync(cachePath, true);
-                        Console.WriteLine($"Upload complete ({_sourcePath}.m4a)");
+                        // handle upload in separate thread
+                        _ = Task.Run(async () => 
+                        {
+                            Console.WriteLine($"Beginning upload of cached item ({_sourcePath}.m4a)");
+                            await blobClient.UploadAsync(cachePath, true);
+                            Console.WriteLine($"Upload complete ({_sourcePath}.m4a)");
+                        });
                     }
                 }
             }
