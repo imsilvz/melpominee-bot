@@ -75,8 +75,14 @@ namespace Melpominee.Commands
 
                     await _audioService.StopPlayback(commandGuild, true);
                     await _audioService.PlayAudio(commandGuild, audioSource);
+
+                    while (audioSource.IsCaching())
+                    {
+                        await Task.Delay(1);
+                    }
+                    await command.ModifyOriginalResponseAsync(m => m.Content = $"Playback of `{videoId}` started.");
                 });
-                await command.RespondAsync($"Playback of `{parsedVideoUrl}` starting!", ephemeral: true);
+                await command.RespondAsync($"Waiting to start playback for `{videoId}`.", ephemeral: true);
                 return;
             }
             await command.RespondAsync("An error occurred while processing your request.", ephemeral: true);

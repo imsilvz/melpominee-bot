@@ -11,6 +11,7 @@ using Microsoft.Extensions.Hosting;
 
 using File = System.IO.File;
 using static Melpominee.Models.AudioSource;
+using System.Text.RegularExpressions;
 namespace Melpominee.Services
 {
     public class AudioService : IHostedService
@@ -44,7 +45,7 @@ namespace Melpominee.Services
 
             Console.WriteLine($"Generating metadata for new playlist \'{name}\'!");
             Directory.CreateDirectory(Path.Combine("assets", metadata.Id));
-            string blobPath = Path.Combine(metadata.Id, "meta.txt");
+            string blobPath = Path.Combine("playlists", metadata.Id, "meta.txt");
             string metadataPath = Path.Combine("assets", blobPath);
             await File.WriteAllTextAsync(metadataPath, JsonSerializer.Serialize(metadata));
 
@@ -67,7 +68,7 @@ namespace Melpominee.Services
             foreach(var sourceFile in sourceFiles)
             {
                 var sourceFileName = Path.GetFileName(sourceFile);
-                string blobPath = Path.Combine(playlistId, sourceFileName);
+                string blobPath = Path.Combine("playlists", playlistId, sourceFileName);
                 var blobClient = _containerClient.GetBlobClient(blobPath);
                 await blobClient.UploadAsync(sourceFile, true);
             }
@@ -119,11 +120,12 @@ namespace Melpominee.Services
 
         private async Task Initialize()
         {
-            //await ConvertLegacyAssets();
-            await foreach (BlobItem blobItem in _containerClient.GetBlobsAsync())
+            // Synchronize Playlists
+            await foreach (BlobItem blobItem in _containerClient.GetBlobsAsync(prefix: "playlists/"))
             {
                 string blobName = blobItem.Name;
-                string playlistFilePath = Path.Combine("assets", blobName);
+                var regex = new Regex(Regex.Escape("playlists/"));
+                string playlistFilePath = regex.Replace(blobName, "assets/", 1);
                 string? playlistPath = Path.GetDirectoryName(playlistFilePath);
                 // skip if already exists
                 if (!File.Exists(playlistFilePath))
@@ -137,33 +139,6 @@ namespace Melpominee.Services
                 }
             }
             await ReloadPlaylists();
-        }
-
-        private async Task ConvertLegacyAssets()
-        {
-            var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var legacyDirectories = Directory.GetDirectories(Path.Combine(executingDirectory, "legacy"));
-            foreach (var legacyPath in legacyDirectories)
-            {
-                var playlistName = Path.GetFileName(legacyPath);
-                var playlistId = await CreatePlaylist(playlistName, false);
-                foreach (var legacyFile in Directory.GetFiles(legacyPath))
-                {
-                    var legacyFileName = Path.GetFileName(legacyFile);
-                    var legacyFileNameNoExt = Path.GetFileNameWithoutExtension(legacyFile);
-                    if (legacyFileNameNoExt == "thumb")
-                    {
-                        File.Copy(legacyFile, Path.Combine(executingDirectory, "assets", playlistId, legacyFileName));
-                    }
-                }
-                foreach (var legacyFile in Directory.GetFiles(Path.Combine(legacyPath, "audio")))
-                {
-                    var legacyFileName = Path.GetFileName(legacyFile);
-                    Console.WriteLine(legacyFileName);
-                    File.Copy(legacyFile, Path.Combine(executingDirectory, "assets", playlistId, legacyFileName));
-                }
-                await UploadPlaylist(playlistId);
-            }
         }
 
         public List<string> GetPlaylists()
@@ -229,7 +204,7 @@ namespace Melpominee.Services
                     return;
                 }
             }
-            await audioConn.QueueSource(audioSource, false);
+            await audioConn.QueueSource(audioSource, true);
             await audioConn.StartPlayback();
         }
 

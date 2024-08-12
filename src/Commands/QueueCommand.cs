@@ -54,7 +54,7 @@ namespace Melpominee.Commands
                 var audioSource = new AudioSource(AudioSource.SourceType.Networked, videoId);
                 await _audioService.QueueAudio(commandGuild, audioSource);
             });
-            await command.RespondAsync($"Audio at `{parsedVideoUrl}` queued for playback!", ephemeral: true);
+            await command.RespondAsync($"Audio of `{videoId}` queued for playback!", ephemeral: true);
         }
 
         public override SlashCommandBuilder Register(DiscordSocketClient client, SlashCommandBuilder builder)

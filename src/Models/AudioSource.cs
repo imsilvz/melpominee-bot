@@ -1,4 +1,6 @@
-﻿using Melpominee.Services;
+﻿using Azure.Identity;
+using Azure.Storage.Blobs;
+using Melpominee.Services;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -27,15 +29,21 @@ namespace Melpominee.Models
 
         public async Task<bool> Precache(string? playlistId = null)
         {
+            // mark caching
+            _caching = true;
+
             var proxyAddr = SecretStore.Instance.GetSecret("MELPOMINEE_PROXY");
-            var proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
+            var proxyFull = "";
+            if (!string.IsNullOrEmpty(proxyAddr))
+            {
+                proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
+            }
 
             Console.WriteLine($"Beginning caching for {_sourcePath}");
             if (_sourceType == SourceType.Networked)
             {
-                _caching = true;
                 var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-                var rootCachePath = Path.Combine(executingDirectory, "ytcache");
+                var rootCachePath = Path.Combine(executingDirectory, "cache", "yt");
                 var cachePath = Path.Combine(rootCachePath, $"{_sourcePath}.m4a");
                 Directory.CreateDirectory(rootCachePath);
 
@@ -44,34 +52,59 @@ namespace Melpominee.Models
                     File.Delete(cachePath);
                 }
 
-                // run yt-dlp process
-                var processInfo = new ProcessStartInfo
+                // check if exists in blob storage
+                string storageName = SecretStore.Instance.GetSecret("AZURE_STORAGE_ACCOUNT_URI");
+                string containerName = SecretStore.Instance.GetSecret("AZURE_STORAGE_CONTAINER");
+                var storageClient = new BlobServiceClient(
+                    new Uri(storageName),
+                    new DefaultAzureCredential()
+                );
+                var containerClient = storageClient.GetBlobContainerClient(containerName);
+                string blobPath = Path.Combine("cache", "yt", $"{_sourcePath}.m4a");
+                var blobClient = containerClient.GetBlobClient(blobPath);
+                if (await blobClient.ExistsAsync())
                 {
-                    FileName = "yt-dlp",
-                    Arguments = $"https://www.youtube.com/watch?v={_sourcePath} {proxyFull} -v -x --audio-format m4a --audio-quality 0 -o {cachePath}",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = false,
-                    CreateNoWindow = true
-                };
-                var process = Process.Start(processInfo);
-                if (process is null)
-                {
-                    _caching = false;
-                    Console.WriteLine($"Caching operation failed for {_sourcePath}");
-                    return false;
+                    // fetch from blob storage
+                    Console.WriteLine($"Fetching from blob storage ({_sourcePath}.m4a)");
+                    await blobClient.DownloadToAsync(cachePath);
                 }
-
-                // handle result
-                await process.WaitForExitAsync();
-                if (process.ExitCode != 0)
+                else
                 {
-                    if (File.Exists(cachePath))
+                    // run yt-dlp process
+                    var processInfo = new ProcessStartInfo
                     {
-                        File.Delete(cachePath);
+                        FileName = "yt-dlp",
+                        Arguments = $"https://www.youtube.com/watch?v={_sourcePath} {proxyFull} -v -x --audio-format m4a --audio-quality 0 -o {cachePath}",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = false,
+                        CreateNoWindow = true
+                    };
+                    var process = Process.Start(processInfo);
+                    if (process is null)
+                    {
+                        _caching = false;
+                        Console.WriteLine($"Caching operation failed for {_sourcePath}");
+                        return false;
                     }
-                    _caching = false;
-                    Console.WriteLine($"Caching operation failed for {_sourcePath}");
-                    return false;
+
+                    // handle result
+                    await process.WaitForExitAsync();
+                    if (process.ExitCode != 0)
+                    {
+                        if (File.Exists(cachePath))
+                        {
+                            File.Delete(cachePath);
+                        }
+                        _caching = false;
+                        Console.WriteLine($"Caching operation failed for {_sourcePath}");
+                        return false;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Beginning upload of cached item ({_sourcePath}.m4a)");
+                        await blobClient.UploadAsync(cachePath, true);
+                        Console.WriteLine($"Upload complete ({_sourcePath}.m4a)");
+                    }
                 }
             }
             else if(_sourceType == SourceType.Local)
@@ -120,12 +153,17 @@ namespace Melpominee.Models
             Console.WriteLine($"Caching operation completed for {_sourcePath}");
             return true;
         }
+
+        public bool IsCaching()
+        {
+            return _caching;
+        }
          
         public bool GetCached()
         {
             if (_sourceType == SourceType.Local) { return true; }
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-            var rootCachePath = Path.Combine(executingDirectory, "ytcache");
+            var rootCachePath = Path.Combine(executingDirectory, "cache", "yt");
             var cachePath = Path.Combine(rootCachePath, $"{_sourcePath}.m4a");
             if (File.Exists(cachePath)) { Console.WriteLine($"Cache Hit: {cachePath}"); }
             return File.Exists(cachePath);
@@ -154,9 +192,9 @@ namespace Melpominee.Models
                     if (GetCached() && !_caching)
                     {
                         var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-                        var rootCachePath = Path.Combine(executingDirectory, "ytcache");
+                        var rootCachePath = Path.Combine(executingDirectory, "cache", "yt");
                         var cachePath = Path.Combine(rootCachePath, $"{_sourcePath}.m4a");
-                        _streamProcess = GetFileProcess(cachePath);
+                        _streamProcess = GetFileProcess(cachePath); 
                         Console.WriteLine("Fetching from cache path...");
                     }
                     else
@@ -203,7 +241,11 @@ namespace Melpominee.Models
         private Process? GetNetworkProcess(string videoId)
         {
             var proxyAddr = SecretStore.Instance.GetSecret("MELPOMINEE_PROXY");
-            var proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
+            var proxyFull = "";
+            if (!string.IsNullOrEmpty(proxyAddr))
+            {
+                proxyFull = $"--proxy \"socks5://{proxyAddr}/\"";
+            }
 
             var processFileName = "cmd.exe";
             var processFileArgs = $"/C yt-dlp {proxyFull} -q -o - \"https://www.youtube.com/watch?v={videoId}\" | ffmpeg -loglevel panic -i pipe:0 -f s16le -ac 2 -ar 48000 pipe:1";
