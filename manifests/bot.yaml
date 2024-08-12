@@ -27,6 +27,8 @@ spec:
               name: melpominee-postgres
           - secret:
               name: melpominee-storage
+          - secret: 
+              name: melpominee-proxy
       containers:
       - name: bot
         image: ghcr.io/imsilvz/melpominee-bot:master

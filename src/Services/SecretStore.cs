@@ -46,13 +46,18 @@ public class SecretStore
         }
     }
 
-    public string GetSecret(string key)
+    public string GetSecret(string key, bool opt = false)
     {
         string? val;
         if (_store.TryGetValue(key, out val))
         {
             return val;
         }
-        throw new KeyNotFoundException($"Secret '{key}' does not exist in SecretStore!");
+
+        if (!opt)
+        {
+            throw new KeyNotFoundException($"Secret '{key}' does not exist in SecretStore!");
+        }
+        return "";
     }
 }
