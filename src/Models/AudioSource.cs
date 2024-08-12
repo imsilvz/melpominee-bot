@@ -169,7 +169,6 @@ namespace Melpominee.Models
             var executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
             var rootCachePath = Path.Combine(executingDirectory, "cache", "yt");
             var cachePath = Path.Combine(rootCachePath, $"{_sourcePath}.m4a");
-            if (File.Exists(cachePath)) { Console.WriteLine($"Cache Hit: {cachePath}"); }
             return File.Exists(cachePath);
         }
 
@@ -199,7 +198,7 @@ namespace Melpominee.Models
                         var rootCachePath = Path.Combine(executingDirectory, "cache", "yt");
                         var cachePath = Path.Combine(rootCachePath, $"{_sourcePath}.m4a");
                         _streamProcess = GetFileProcess(cachePath); 
-                        Console.WriteLine("Fetching from cache path...");
+                        Console.WriteLine($"Fetching from cache path ({_sourcePath}.m4a)");
                     }
                     else
                     {
