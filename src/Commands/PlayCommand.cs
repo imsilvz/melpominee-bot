@@ -88,10 +88,10 @@ namespace Melpominee.Commands
                     }
                     else
                     {
-                        await command.ModifyOriginalResponseAsync(m => m.Content = $"Playback of `{videoId}` failed.");
+                        await command.ModifyOriginalResponseAsync(m => m.Content = $"Playback of `{videoId}` failed. Please report this issue to the author as soon as possible.");
                     }
                 });
-                await command.RespondAsync($"Waiting to start playback for `{videoId}`.", ephemeral: true);
+                await command.RespondAsync($"Waiting to start playback for `{videoId}`. This is likely due to caching which will enable faster playback in the future.", ephemeral: true);
                 return;
             }
             await command.RespondAsync("An error occurred while processing your request.", ephemeral: true);
