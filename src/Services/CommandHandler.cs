@@ -78,7 +78,7 @@ namespace Melpominee.Services
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            // _client.Ready += InstallCommands;
+            _client.Ready += InstallCommands;
             _client.SlashCommandExecuted += SlashCommandHandler;
             return Task.CompletedTask;
         }
