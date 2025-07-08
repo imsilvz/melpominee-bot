@@ -53,11 +53,6 @@ jobs:
           curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
       - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_SECRET }}
-
-      - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -81,3 +76,7 @@ jobs:
           manifests: |
             manifests/bot.yaml
           namespace: 'melpominee'
+
+      - name: Issue Restart
+        run: |
+          kubectl rollout restart deployment melpominee-bot --namespace=melpominee
