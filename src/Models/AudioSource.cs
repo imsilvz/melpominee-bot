@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Azure.Storage.Files.Shares.Models;
+using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Melpominee.Models;
 public class AudioSource
@@ -16,23 +13,15 @@ public class AudioSource
 
     public Stream GetStream()
     {
-        ProcessStartInfo startInfo = new("ffmpeg")
+        Process? streamProcess = null;
+        var processInfo = new ProcessStartInfo
         {
+            FileName = "ffmpeg",
+            UseShellExecute = false,
             RedirectStandardOutput = true,
+            CreateNoWindow = true
         };
-        var arguments = startInfo.ArgumentList;
-
-        // Set reconnect attempts in case of a lost connection to 1
-        arguments.Add("-reconnect");
-        arguments.Add("1");
-
-        // Set reconnect attempts in case of a lost connection for streamed media to 1
-        arguments.Add("-reconnect_streamed");
-        arguments.Add("1");
-
-        // Set the maximum delay between reconnection attempts to 5 seconds
-        arguments.Add("-reconnect_delay_max");
-        arguments.Add("5");
+        var arguments = processInfo.ArgumentList;
 
         // Specify the input
         arguments.Add("-i");
@@ -57,8 +46,17 @@ public class AudioSource
         // Direct the output to stdout
         arguments.Add("pipe:1");
 
-        // Start the FFmpeg process
-        var ffmpeg = Process.Start(startInfo)!;
-        return ffmpeg.StandardOutput.BaseStream;
+        try
+        {
+            var process = Process.Start(processInfo);
+            streamProcess = process;
+        }
+        catch
+        {
+            Console.WriteLine($"An error occurred while starting a file stream for {_sourcePath}");
+        }
+
+        if (streamProcess is null) { throw new Exception("Something went wrong!"); }
+        return streamProcess.StandardOutput.BaseStream;
     }
 }

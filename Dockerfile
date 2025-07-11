@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get install build-essential chrpath libssl-dev libxft-dev \
 				python3-launchpadlib software-properties-common wget \
 				libfreetype6 libfreetype6-dev libfontconfig1 libfontconfig1-dev \
-				bzip2 aspnetcore-runtime-8.0 libopus0 libopus-dev libsodium23 libsodium-dev -y
+				bzip2 aspnetcore-runtime-9.0 libopus0 libopus-dev libsodium23 libsodium-dev -y
 
 #RUN wget https://www.johnvansickle.com/ffmpeg/old-releases/ffmpeg-4.2.2-amd64-static.tar.xz -O /tmp/ffmpeg.tar.xz
 #RUN mkdir /tmp/ffmpeg-4.2.2-amd64-static && tar xvf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-4.2.2-amd64-static --strip-components=1
@@ -27,7 +27,7 @@ RUN phantomjs --version
 
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 COPY . /src
 WORKDIR /src
 RUN ls

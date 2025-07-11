@@ -13,20 +13,10 @@ using System.Diagnostics;
 namespace Melpominee.Services;
 public class MelpomineeAudioService : IHostedService
 {
-    private BlobServiceClient _serviceClient;
-    private BlobContainerClient _containerClient;
     private static readonly FastCache<ulong, SemaphoreSlim> _semStore = new();
     private static readonly ConcurrentDictionary<ulong, VoiceInstance> _instances = new();
     public MelpomineeAudioService()
-    {
-        _serviceClient = new BlobServiceClient(
-            new Uri(SecretStore.Instance.GetSecret("AZURE_STORAGE_ACCOUNT_URI")),
-            new DefaultAzureCredential()
-        );
-
-        string containerName = SecretStore.Instance.GetSecret("AZURE_STORAGE_CONTAINER");
-        _containerClient = _serviceClient.GetBlobContainerClient(containerName);
-    }
+    {}
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -82,31 +72,13 @@ public class MelpomineeAudioService : IHostedService
         }
     }
 
-    public async Task StartPlayback(GatewayClient client, Guild guild)
+    public VoiceInstance? GetVoiceInstance(Guild guild)
     {
         if (!_instances.TryGetValue(guild.Id, out var voiceInstance))
         {
-            return;
+            return null;
         }
-
-    }
-
-    public async Task QueueAudio(GatewayClient client, Guild guild, AudioSource source)
-    {
-        if (!_instances.TryGetValue(guild.Id, out var voiceInstance))
-        {
-            return;
-        }
-
-    }
-
-    public async Task StopPlayback(GatewayClient client, Guild guild)
-    {
-        if (!_instances.TryGetValue(guild.Id, out var voiceInstance))
-        {
-            return;
-        }
-
+        return voiceInstance;
     }
 
     public async ValueTask VoiceStateUpdated(GatewayClient client, VoiceState state)
