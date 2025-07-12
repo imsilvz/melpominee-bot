@@ -138,7 +138,7 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService) : App
         }
         else
         {
-            if (await voiceInstance.GetQueueLength() == 0)
+            if (await voiceInstance.GetQueueLength() == 0 && await voiceInstance.GetPlaybackState() != VoiceInstance.PlaybackStatus.Paused)
             {
                 await interaction.SendFollowupMessageAsync(
                     "The queue is empty! Please add a song to the queue before starting playback."
