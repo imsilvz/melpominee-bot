@@ -151,6 +151,19 @@ public class VoiceInstance : IDisposable
         }
     }
 
+    public async Task<PlaybackStatus> GetPlaybackState()
+    {
+        await _audioStateSemaphore.WaitAsync();
+        try
+        {
+            return _playbackStatus;
+        }
+        finally
+        {
+            _audioStateSemaphore.Release();
+        }
+    }
+
     private async Task PlayNext()
     {
         AudioSource source;
@@ -266,6 +279,7 @@ public class VoiceInstance : IDisposable
                 return;
             }
             Console.WriteLine("Audio finished playing, starting next track...");
+            _playbackStatus = PlaybackStatus.Playing;
             _ = Task.Run(async () => await PlayNext());
         }
         finally
