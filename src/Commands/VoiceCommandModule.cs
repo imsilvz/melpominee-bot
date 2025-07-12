@@ -136,6 +136,16 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService) : App
             if (await voiceInstance.GetPlaybackState() == VoiceInstance.PlaybackStatus.Playing)
                 await voiceInstance.SkipAudio();
         }
+        else
+        {
+            if (await voiceInstance.GetQueueLength() == 0)
+            {
+                await interaction.SendFollowupMessageAsync(
+                    "The queue is empty! Please add a song to the queue before starting playback."
+                );
+                return;
+            }
+        }
 
         await voiceInstance.StartPlayback();
         await interaction.SendFollowupMessageAsync($"Ok.");
