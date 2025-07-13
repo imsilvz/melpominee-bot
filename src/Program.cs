@@ -8,11 +8,13 @@ namespace Melpominee
     {
         public static async Task Main(string[] args)
         {
-            //await DataContext.Instance.Initialize();
+            // this should eventually happen outside of the application
+            // likely as part of the deployment process
+            await DataContext.Instance.Initialize();
             using IHost host = Host.CreateDefaultBuilder(args)
             .ConfigureServices(services =>
             {
-                //services.AddSingleton((p) => DataContext.Instance);
+                services.AddSingleton((p) => DataContext.Instance);
                 services.AddSingleton<MelpomineeAudioService>();
                 services.AddHostedService<MelpomineeService>();
             })

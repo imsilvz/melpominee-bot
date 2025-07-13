@@ -11,22 +11,12 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace Melpominee.Services;
-public class MelpomineeAudioService : IHostedService
+public class MelpomineeAudioService
 {
     private static readonly FastCache<ulong, SemaphoreSlim> _semStore = new();
     private static readonly ConcurrentDictionary<ulong, VoiceInstance> _instances = new();
     public MelpomineeAudioService()
     {}
-
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        return Task.CompletedTask;
-    }
 
     public async Task<bool> JoinChannel(GatewayClient client, Guild guild, ulong? channelId)
     {
@@ -36,12 +26,14 @@ public class MelpomineeAudioService : IHostedService
         {
             if (channelId is null)
             {
+                // null channelId means we disconnect
                 Console.WriteLine("Disconnecting!");
                 await client.UpdateVoiceStateAsync(new(guild.Id, null));
                 return true;
             }
             else
             {
+                // check if we are already connected to a channel
                 if (_instances.TryGetValue(guild.Id, out var voiceInstance))
                 {
                     Console.WriteLine("Switching Channels!");

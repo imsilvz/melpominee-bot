@@ -1,10 +1,11 @@
 ﻿using Melpominee.Models;
 using Melpominee.Services;
-using Microsoft.VisualBasic;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
+using Npgsql;
 using System.Text.RegularExpressions;
+using System.Data;
 
 namespace Melpominee.Commands;
 public class VoiceCommandModule(MelpomineeAudioService _audioService) : ApplicationCommandModule<ApplicationCommandContext>
@@ -314,5 +315,188 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService) : App
                 }
             )
         );
+    }
+
+    [SubSlashCommand("playlist", "Manage available playlists.")]
+    public class VoiceAudioPlaylistCommandModule(MelpomineeAudioService _audioService, DataContext _dataContext) : ApplicationCommandModule<ApplicationCommandContext>
+    {
+        [SubSlashCommand("create", "Create a new playlist.")]
+        public async Task PlaylistCreate([SlashCommandParameter(Name = "name", Description = "The name of the playlist you want to create.")] string playlistName)
+        {
+            try
+            {
+                // make connection and insert the new playlist row
+                await using (var conn = await _dataContext.GetConnection())
+                await using (var command = new NpgsqlCommand("INSERT INTO melpominee_audio.playlists (owner, playlist_name) VALUES ($1, $2)", conn)
+                {
+                    Parameters =
+                {
+                    new() { Value = (long)Context.User.Id, DbType = DbType.Int64 },
+                    new() { Value = playlistName }
+                }
+                })
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (PostgresException e)
+            {
+                // Unique Key Conflict
+                if (e.SqlState == "23505")
+                {
+                    await RespondAsync(
+                        InteractionCallback.Message(
+                            new()
+                            {
+                                Content = $"You already have a playlist with this name.",
+                                Flags = MessageFlags.Ephemeral
+                            }
+                        )
+                    );
+                    return;
+                }
+                throw;
+            }
+
+            await RespondAsync(
+                InteractionCallback.Message(
+                    new()
+                    {
+                        Content = $"Your \"{playlistName}\" playlist has been created.",
+                        Flags = MessageFlags.Ephemeral
+                    }
+                )
+            );
+        }
+
+        [SubSlashCommand("delete", "Delete an existing playlist.")]
+        public async Task PlaylistDelete(
+            [SlashCommandParameter(
+                Name = "name", 
+                Description = "The name of the playlist you want to delete.", 
+                AutocompleteProviderType = typeof(PlaylistNameAutocompleteProvider))] string stringId)
+        {
+            long playlistId;
+            if(!long.TryParse(stringId, out playlistId))
+            {
+                // the autocomplete will submit the id itself. if nothing matches the id, it comes in as text.
+                await RespondAsync(
+                    InteractionCallback.Message(
+                        new()
+                        {
+                            Content = $"The specified playlist was not found. Please try again.",
+                            Flags = MessageFlags.Ephemeral
+                        }
+                    )
+                );
+                return;
+            }
+
+            // make connection and delete the playlist. we check owner to ensure someone doesnt attempt to delete someone elses playlist
+            await using (var conn = await _dataContext.GetConnection())
+            await using (var command = new NpgsqlCommand("DELETE FROM melpominee_audio.playlists WHERE id = $1 AND owner = $2", conn)
+            {
+                Parameters =
+                {
+                    new() { Value = playlistId, DbType = DbType.Int64 },
+                    new() { Value = (long)Context.User.Id, DbType = DbType.Int64 }
+                }
+            })
+            { 
+                var rowsAffected = await command.ExecuteNonQueryAsync();
+                if (rowsAffected < 1)
+                {
+                    await RespondAsync(
+                        InteractionCallback.Message(
+                            new()
+                            {
+                                Content = $"The specified playlist was not found. Please try again.",
+                                Flags = MessageFlags.Ephemeral
+                            }
+                        )
+                    );
+                    return;
+                }
+            }
+
+            await RespondAsync(
+                InteractionCallback.Message(
+                    new()
+                    {
+                        Content = $"Your playlist was successfully deleted.",
+                        Flags = MessageFlags.Ephemeral
+                    }
+                )
+            );
+        }
+
+        [SubSlashCommand("add", "Add a new track to an existing playlist.")]
+        public async Task PlaylistAdd(
+            [SlashCommandParameter(Name = "name", Description = "The name of the playlist you want to add to.")] string playlistName,
+            [SlashCommandParameter(Name = "url", Description = "The url of the track you would like to add.")] string @videoUrl)
+        {
+            await RespondAsync(
+                InteractionCallback.Message(
+                    new()
+                    {
+                        Content = $"Playlist Management Test",
+                        Flags = MessageFlags.Ephemeral
+                    }
+                )
+            );
+        }
+
+        [SubSlashCommand("remove", "Remove a track from an existing playlist.")]
+        public async Task PlaylistRemove(
+            [SlashCommandParameter(Name = "name", Description = "The name of the playlist you want to remove from.")] string playlistName,
+            [SlashCommandParameter(Name = "id", Description = "The ID of the track you would like to remove.")] string @videoUrl)
+        {
+            await RespondAsync(
+                InteractionCallback.Message(
+                    new()
+                    {
+                        Content = $"Playlist Management Test",
+                        Flags = MessageFlags.Ephemeral
+                    }
+                )
+            );
+        }
+    }
+}
+
+public class PlaylistNameAutocompleteProvider(DataContext _dataContext) : IAutocompleteProvider<AutocompleteInteractionContext>
+{
+    public async ValueTask<IEnumerable<ApplicationCommandOptionChoiceProperties>?> GetChoicesAsync(
+        ApplicationCommandInteractionDataOption option,
+        AutocompleteInteractionContext context)
+    {
+        var input = option.Value!;
+        var playlists = new List<(long, string)>();
+
+        await using (var conn = await _dataContext.GetConnection())
+        await using (var command = new NpgsqlCommand("SELECT id, playlist_name FROM melpominee_audio.playlists WHERE owner = $1", conn)
+        {
+            Parameters =
+                {
+                    new() { Value = (long)context.User.Id, DbType = DbType.Int64 }
+                }
+        })
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                playlists.Add((reader.GetInt64(0), reader.GetString(1)));
+            }
+        }
+
+        // filter by input
+        if (input != "")
+        {
+            playlists = playlists.Where(kvp => kvp.Item2.ToLower().Contains(input.ToLower())).ToList();
+        }
+
+        var result = playlists.Select
+        (
+            kvp => new ApplicationCommandOptionChoiceProperties(kvp.Item2, kvp.Item1.ToString())
+        );
+        return result;
     }
 }

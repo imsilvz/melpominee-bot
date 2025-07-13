@@ -18,7 +18,7 @@ namespace Melpominee.Services
 
         // discord
         private readonly ShardedGatewayClient _gateway;
-        private readonly ApplicationCommandService<ApplicationCommandContext> _commandService;
+        private readonly ApplicationCommandService<ApplicationCommandContext, AutocompleteInteractionContext> _commandService;
         private readonly ComponentInteractionService<ButtonInteractionContext> _buttonInteractionService;
         
         public MelpomineeService(IServiceProvider serviceProvider, MelpomineeAudioService audioService)
@@ -59,11 +59,15 @@ namespace Melpominee.Services
                 var result = await (interaction switch
                 {
                     ApplicationCommandInteraction applicationCommandInteraction => _commandService.ExecuteAsync(
-                        new ApplicationCommandContext(applicationCommandInteraction, gateway),
+                        new(applicationCommandInteraction, gateway),
+                        _serviceProvider
+                    ),
+                    AutocompleteInteraction autocompleteInteraction => _commandService.ExecuteAutocompleteAsync(
+                        new(autocompleteInteraction, gateway),
                         _serviceProvider
                     ),
                     ButtonInteraction buttonInteraction => _buttonInteractionService.ExecuteAsync(
-                        new ButtonInteractionContext(buttonInteraction, gateway),
+                        new(buttonInteraction, gateway),
                         _serviceProvider
                     ),
                     _ => throw new("Invalid interaction."),

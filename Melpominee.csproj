@@ -30,13 +30,15 @@
 
   <ItemGroup>
     <Folder Include="audio\" />
-    <Folder Include="src\Abstractions\" />
   </ItemGroup>
 
   <ItemGroup>
-	<Content Include="secrets\**">
+    <Content Include="migrations\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</Content>
+    </Content>
+	  <Content Include="secrets\**">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
   </ItemGroup>
 
   <ItemGroup>

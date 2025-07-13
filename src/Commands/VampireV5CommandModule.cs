@@ -66,7 +66,7 @@ public class VampireV5CommandModule : ApplicationCommandModule<ApplicationComman
         {
             Content = messageString,
             Components = embedComponents.ToArray(),
-            Embeds = new[] { embed },
+            Embeds = [embed],
         };
         await interaction.SendResponseAsync(InteractionCallback.Message(message));
     }
