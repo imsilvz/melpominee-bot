@@ -31,6 +31,21 @@ public class VoiceCommandModule(MelpomineeAudioService _audioService) : Applicat
             return;
         }
 
+        VoiceInstance? voiceInstance = _audioService.GetVoiceInstance(Context.Guild!);
+        if (voiceInstance is not null)
+        {
+            await RespondAsync(
+                InteractionCallback.Message(
+                    new()
+                    {
+                        Content = "Melpominee is already connected to a channel in this server! Please use /dismiss first.",
+                        Flags = MessageFlags.Ephemeral
+                    }
+                )
+            );
+            return;
+        }
+
         // Join the voice channel
         var client = Context.Client;
         await _audioService.JoinChannel(client, guild, voiceState.ChannelId.GetValueOrDefault());
