@@ -1,8 +1,6 @@
 ﻿using Azure.Identity;
 using Azure.Storage.Blobs;
-using Azure.Storage.Files.Shares.Models;
 using Melpominee.Services;
-using System;
 using System.Diagnostics;
 using System.Reflection;
 

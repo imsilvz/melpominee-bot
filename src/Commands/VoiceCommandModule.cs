@@ -1,6 +1,5 @@
 ﻿using Melpominee.Models;
 using Melpominee.Services;
-using Microsoft.VisualBasic;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
@@ -84,13 +83,21 @@ public class VoiceCommandModule(MelpomineeAudioService _audioService) : Applicat
 }
 
 [SlashCommand("playback", "Audio Playback", Contexts = [InteractionContextType.Guild])]
-public class VoiceAudioCommandModule(MelpomineeAudioService _audioService) : ApplicationCommandModule<ApplicationCommandContext>
+public class VoiceAudioCommandModule(MelpomineeAudioService _audioService, DataContext _dataContext) : ApplicationCommandModule<ApplicationCommandContext>
 {
     // Start queue playback. Optionally, specify a new source to play immediately.
     // If playback is ongoing, the current track will be skipped and the new source will start immediately.
     // If the queue is empty and no source is specified, an error message will be displayed.
     [SubSlashCommand("start", "Start audio playback in the current voice channel.")]
-    public async Task Play([SlashCommandParameter(Name = "url", Description = "URL of song to add to queue")] string? @videoUrl = null)
+    public async Task Play(
+        [SlashCommandParameter(
+            Name = "url", 
+            Description = "URL of song to add to queue")] string? @videoUrl = null,
+        [SlashCommandParameter(
+            Name = "playlist", 
+            Description = "Playlist name of the song you want to play",
+            AutocompleteProviderType = typeof(PlaylistNameAutocompleteProvider))] string? playlistString = null
+    )
     {
         var interaction = Context.Interaction;
         VoiceInstance? voiceInstance = _audioService.GetVoiceInstance(Context.Guild!);
@@ -138,6 +145,71 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService) : App
             if (await voiceInstance.GetPlaybackState() == VoiceInstance.PlaybackStatus.Playing)
                 await voiceInstance.SkipAudio();
         }
+        else if (playlistString is not null)
+        {
+            long playlistId;
+            if (!long.TryParse(playlistString, out playlistId))
+            {
+                // the autocomplete will submit the id itself. if nothing matches the id, it comes in as text.
+                await interaction.SendFollowupMessageAsync(
+                    "The specified playlist was not found. Please try again."
+                );
+                return;
+            }
+
+            // check if playlist exists
+            string playlistName;
+            List<string> playlistTracks = new();
+            await using (var conn = await _dataContext.GetConnection())
+            await using (var command = new NpgsqlCommand(
+                @"
+                    SELECT lists.playlist_name, tracks.track_id 
+                    FROM melpominee_audio.playlists lists
+                    INNER JOIN melpominee_audio.playlist_tracks tracks 
+                        ON lists.id = tracks.playlist_id
+                    WHERE lists.id = $1 AND lists.owner = $2", conn)
+            {
+                Parameters =
+                {
+                    new() { Value = playlistId, DbType = DbType.Int64 },
+                    new() { Value = (long)Context.User.Id, DbType = DbType.Int64 }
+                }
+            })
+            await using (var reader = await command.ExecuteReaderAsync())
+            {
+                // iterate results
+                while (await reader.ReadAsync())
+                {
+                     // add each track to the queue
+                     playlistName = reader.GetString(0);
+                    string trackId = reader.GetString(1);
+                    playlistTracks.Add(trackId);
+                }
+            }
+
+            // break out if no tracks were found.
+            // this could mean the playlist was empty or the user does not own it due to the inner join.
+            if (playlistTracks.Count < 1)
+            {
+                await interaction.SendFollowupMessageAsync(
+                    "The specified playlist was empty or does not exist. Please add a song to the queue before starting playback."
+                );
+                return;
+            }
+
+            // clear queue
+            await voiceInstance.ClearQueue();
+            foreach (var trackId in playlistTracks)
+            {
+                AudioSource audioSource = new(trackId);
+                if (!audioSource.GetCached())
+                    await audioSource.Precache();
+                await voiceInstance.QueueAudio(audioSource);
+            }
+            // immediately start playback by skipping current track if currently playing
+            if (await voiceInstance.GetPlaybackState() == VoiceInstance.PlaybackStatus.Playing)
+                await voiceInstance.SkipAudio();
+        }
         else
         {
             if (await voiceInstance.GetQueueLength() == 0 && await voiceInstance.GetPlaybackState() != VoiceInstance.PlaybackStatus.Paused)
@@ -150,7 +222,7 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService) : App
         }
 
         await voiceInstance.StartPlayback();
-        await interaction.SendFollowupMessageAsync($"Ok.");
+        await interaction.SendFollowupMessageAsync($"Playback starting.");
     }
 
     // Pause queue playback. This should retain the current playback position which will be resumed when the /play command is called.

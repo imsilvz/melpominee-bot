@@ -1,6 +1,5 @@
 ﻿using NetCord;
 using NetCord.Rest;
-using NetCord.Services;
 using NetCord.Services.ApplicationCommands;
 using Melpominee.Utility;
 

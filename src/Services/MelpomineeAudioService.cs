@@ -1,14 +1,9 @@
-﻿using Azure.Identity;
-using Azure.Storage.Blobs;
-using Jitbit.Utils;
+﻿using Jitbit.Utils;
 using Melpominee.Models;
-using Microsoft.Extensions.Hosting;
 using NetCord.Gateway;
 using NetCord.Gateway.Voice;
 using NetCord.Logging;
-using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace Melpominee.Services;
 public class MelpomineeAudioService

@@ -1,9 +1,6 @@
-﻿using NetCord.Gateway.Voice;
-using System.IO;
-using System.IO.Pipes;
-using System.Threading;
+﻿using Melpominee.Utility;
+using NetCord.Gateway.Voice;
 
-using Melpominee.Utility;
 namespace Melpominee.Models;
 
 public class VoiceInstance : IDisposable
