@@ -1,5 +1,6 @@
 ﻿using Melpominee.Models;
 using Melpominee.Services;
+using Melpominee.Utility;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
@@ -391,7 +392,11 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService, DataC
     }
 
     [SubSlashCommand("playlist", "Manage available playlists.")]
-    public class VoiceAudioPlaylistCommandModule(MelpomineeAudioService _audioService, DataContext _dataContext) : ApplicationCommandModule<ApplicationCommandContext>
+    public class VoiceAudioPlaylistCommandModule(
+        MelpomineeAudioService _audioService, 
+        DataContext _dataContext,
+        YoutubeAPI _youtubeAPI
+    ) : ApplicationCommandModule<ApplicationCommandContext>
     {
         [SubSlashCommand("create", "Create a new playlist.")]
         public async Task PlaylistCreate([SlashCommandParameter(Name = "name", Description = "The name of the playlist you want to create.")] string playlistName)
@@ -580,15 +585,17 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService, DataC
             AudioSource audioSource = new(videoId);
             if (!audioSource.GetCached())
                 await audioSource.Precache();
+            var videoDetails = await _youtubeAPI.GetVideoDetails(videoId);
 
             // make connection and insert the new playlist row
             await using (var conn = await _dataContext.GetConnection())
-            await using (var command = new NpgsqlCommand("INSERT INTO melpominee_audio.playlist_tracks (playlist_id, track_id) VALUES ($1, $2)", conn)
+            await using (var command = new NpgsqlCommand("INSERT INTO melpominee_audio.playlist_tracks (playlist_id, track_id, track_name) VALUES ($1, $2, $3)", conn)
             {
                 Parameters =
                 {
                     new() { Value = playlistId, DbType = DbType.Int64 },
-                    new() { Value = videoId, DbType = DbType.String }
+                    new() { Value = videoId, DbType = DbType.String },
+                    new() { Value = videoDetails?.Title ?? "", DbType = DbType.String }
                 }
             })
             {
@@ -598,7 +605,9 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService, DataC
                     var rowsAffected = await command.ExecuteNonQueryAsync();
                     if (rowsAffected < 1)
                     {
-                        await interaction.SendFollowupMessageAsync($"Failed to add `{videoId}` to playlist `{playlistName}`.");
+                        await interaction.SendFollowupMessageAsync(
+                            $"Failed to add `{(videoDetails is not null ? $"[{videoId}] {videoDetails.Title}" : videoId)}` to playlist `{playlistName}`."
+                        );
                         return;
                     }
                 }
@@ -607,13 +616,17 @@ public class VoiceAudioCommandModule(MelpomineeAudioService _audioService, DataC
                     // Unique Key Conflict
                     if (e.SqlState == "23505")
                     {
-                        await interaction.SendFollowupMessageAsync($"The track `{videoId}` is already in the playlist `{playlistName}`.");
+                        await interaction.SendFollowupMessageAsync(
+                            $"The track `{(videoDetails is not null ? $"[{videoId}] {videoDetails.Title}" : videoId)}` is already in the playlist `{playlistName}`."
+                        );
                         return;
                     }
                     throw;
                 }
             }
-            await interaction.SendFollowupMessageAsync($"Added `{videoId}` to playlist `{playlistName}`.");
+            await interaction.SendFollowupMessageAsync(
+                $"Added `{(videoDetails is not null ? $"[{videoId}] {videoDetails.Title}" : videoId)}` to playlist `{playlistName}`."
+            );
         }
 
         [SubSlashCommand("remove", "Remove a track from an existing playlist.")]
@@ -744,7 +757,7 @@ public class PlaylistTrackAutocompleteProvider(DataContext _dataContext) : IAuto
         AutocompleteInteractionContext context)
     {
         var input = option.Value!;
-        var playlists = new List<string>();
+        var playlists = new List<(string, string)>();
 
         // three levels deep!
         var playbackOptions = context.Interaction.Data.Options;
@@ -759,7 +772,7 @@ public class PlaylistTrackAutocompleteProvider(DataContext _dataContext) : IAuto
             await using (var conn = await _dataContext.GetConnection())
             await using (var command = new NpgsqlCommand(
                 @"
-                    SELECT tracks.track_id 
+                    SELECT tracks.track_id, tracks.track_name
                     FROM melpominee_audio.playlist_tracks tracks
                     LEFT JOIN melpominee_audio.playlists lists
                         ON tracks.playlist_id = lists.id    
@@ -775,20 +788,22 @@ public class PlaylistTrackAutocompleteProvider(DataContext _dataContext) : IAuto
             {
                 while (await reader.ReadAsync())
                 {
-                    playlists.Add(reader.GetString(0));
+                    playlists.Add((reader.GetString(0), reader.GetString(1)));
                 }
             }
 
             // filter by input
             if (input != "")
             {
-                playlists = playlists.Where(s => s.ToLower().Contains(input.ToLower())).ToList();
+                playlists = playlists.Where(s => s.Item2.ToLower().Contains(input.ToLower())).ToList();
             }
         }
 
         var result = playlists.Select
         (
-            s => new ApplicationCommandOptionChoiceProperties(s, s)
+            s => new ApplicationCommandOptionChoiceProperties(
+                !string.IsNullOrEmpty(s.Item2) ? $"[{s.Item1}] {s.Item2}" : s.Item1, s.Item1
+            )
         );
         return result;
     }

@@ -29,6 +29,8 @@ spec:
               name: melpominee-storage
           - secret: 
               name: melpominee-proxy
+          - secret:
+              name: youtube-api      
       containers:
       - name: bot
         image: ghcr.io/imsilvz/melpominee-bot:master

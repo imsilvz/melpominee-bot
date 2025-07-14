@@ -2,6 +2,8 @@
 using Melpominee.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http;
+using Melpominee.Utility;
 namespace Melpominee
 {
     class Program
@@ -14,8 +16,10 @@ namespace Melpominee
             using IHost host = Host.CreateDefaultBuilder(args)
             .ConfigureServices(services =>
             {
+                services.AddHttpClient();
                 services.AddSingleton((p) => DataContext.Instance);
                 services.AddSingleton<MelpomineeAudioService>();
+                services.AddSingleton<YoutubeAPI>();
                 services.AddHostedService<MelpomineeService>();
             })
             .Build();
