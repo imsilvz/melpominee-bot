@@ -82,13 +82,13 @@ public class VoiceCommandModule(MelpomineeAudioService _audioService) : Applicat
     }
 }
 
-[SlashCommand("playback", "Audio Playback", Contexts = [InteractionContextType.Guild])]
+[SlashCommand("audio", "Audio Playback", Contexts = [InteractionContextType.Guild])]
 public class VoiceAudioCommandModule(MelpomineeAudioService _audioService, DataContext _dataContext) : ApplicationCommandModule<ApplicationCommandContext>
 {
     // Start queue playback. Optionally, specify a new source to play immediately.
     // If playback is ongoing, the current track will be skipped and the new source will start immediately.
     // If the queue is empty and no source is specified, an error message will be displayed.
-    [SubSlashCommand("start", "Start audio playback in the current voice channel.")]
+    [SubSlashCommand("play", "Start audio playback in the current voice channel.")]
     public async Task Play(
         [SlashCommandParameter(
             Name = "url", 
