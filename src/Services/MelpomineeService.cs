@@ -6,6 +6,7 @@ using NetCord.Rest;
 using NetCord.Services;
 using NetCord.Services.ApplicationCommands;
 using NetCord.Services.ComponentInteractions;
+using System.Diagnostics;
 
 namespace Melpominee.Services
 {
@@ -34,7 +35,7 @@ namespace Melpominee.Services
                 new BotToken(SecretStore.Instance.GetSecret("DISCORD_TOKEN")),
                 new ShardedGatewayClientConfiguration
                 {
-                    MaxConcurrency = 1, // Adjust as needed
+                    MaxConcurrency = 1,
                     LoggerFactory = ShardedConsoleLogger.GetFactory(),
                 }
             );
@@ -94,8 +95,14 @@ namespace Melpominee.Services
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             // Create the commands so that you can use them in the Discord client
-            await _commandService.RegisterCommandsAsync(_gateway.Rest, _gateway.Id);
+            IReadOnlyList<ApplicationCommand> applicationCommands = await _commandService.RegisterCommandsAsync(_gateway.Rest, _gateway.Id);
+            Debug.WriteLine($"Registered {applicationCommands.Count} application commands.");
             await _gateway.StartAsync();
+
+            foreach (var command in applicationCommands)
+            {
+                Debug.WriteLine($"Command: {command.Name} (ID: {command.Id})");
+            }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
