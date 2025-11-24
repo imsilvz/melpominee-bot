@@ -96,13 +96,13 @@ namespace Melpominee.Services
         {
             // Create the commands so that you can use them in the Discord client
             IReadOnlyList<ApplicationCommand> applicationCommands = await _commandService.RegisterCommandsAsync(_gateway.Rest, _gateway.Id);
-            Debug.WriteLine($"Registered {applicationCommands.Count} application commands.");
+            Console.WriteLine($"Registered {applicationCommands.Count} application commands.");
             await _gateway.StartAsync();
 
             foreach (var command in applicationCommands)
             {
-                Debug.WriteLine($"Command: {command.Name} (ID: {command.Id})");
-                Debug.WriteLine($"  Description: {command.Description}");
+                Console.WriteLine($"Command: {command.Name} (ID: {command.Id})");
+                Console.WriteLine($"  Description: {command.Description}");
             }
         }
 
