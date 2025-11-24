@@ -34,7 +34,7 @@ namespace Melpominee.Services
                 new BotToken(SecretStore.Instance.GetSecret("DISCORD_TOKEN")),
                 new ShardedGatewayClientConfiguration
                 {
-                    ShardCount = 1, // Adjust as needed
+                    MaxConcurrency = 1, // Adjust as needed
                     LoggerFactory = ShardedConsoleLogger.GetFactory(),
                 }
             );
@@ -94,7 +94,7 @@ namespace Melpominee.Services
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             // Create the commands so that you can use them in the Discord client
-            await _commandService.CreateCommandsAsync(_gateway.Rest, _gateway.Id);
+            await _commandService.RegisterCommandsAsync(_gateway.Rest, _gateway.Id);
             await _gateway.StartAsync();
         }
 

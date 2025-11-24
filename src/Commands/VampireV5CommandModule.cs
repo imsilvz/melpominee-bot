@@ -34,14 +34,14 @@ public class VampireV5CommandModule : ApplicationCommandModule<ApplicationComman
         var firstRow = new ActionRowProperties();
         if (results.DiceResults.Where(res => res < 6).Any())
         {
-            firstRow.AddButtons([
-                new ButtonProperties("reroll-failures", "Re-roll Failures", new EmojiProperties(1047224347707838605), ButtonStyle.Secondary)
+            firstRow.AddComponents([
+                new ButtonProperties("reroll-failures", "Re-roll Failures", EmojiProperties.Custom(1047224347707838605), ButtonStyle.Secondary)
             ]);
         }
         if (results.DiceResults.Where(res => res < 10).Any())
         {
-            firstRow.AddButtons([
-                new ButtonProperties("maximize-crits", "Maximize Crits", new EmojiProperties(1047224346650890260), ButtonStyle.Secondary)
+            firstRow.AddComponents([
+                new ButtonProperties("maximize-crits", "Maximize Crits", EmojiProperties.Custom(1047224346650890260), ButtonStyle.Secondary)
             ]);
         }
 
@@ -49,22 +49,22 @@ public class VampireV5CommandModule : ApplicationCommandModule<ApplicationComman
         var secondRow = new ActionRowProperties();
         if (results.MessyCritical && results.DiceResults.Where(res => res == 10).ToArray().Length > 0 && results.HungerResults.Where(res => res == 10).ToArray().Length < 2)
         {
-            secondRow.AddButtons([
-                new ButtonProperties("avoid-messy", "Avoid Messy Critical", new EmojiProperties(1047224348638978048), ButtonStyle.Secondary)
+            secondRow.AddComponents([
+                new ButtonProperties("avoid-messy", "Avoid Messy Critical", EmojiProperties.Custom(1047224348638978048), ButtonStyle.Secondary)
             ]);
         }
 
         // add action rows if applicable
-        if (firstRow.Buttons.Count() > 0)
+        if (firstRow.Components.Count() > 0)
             embedComponents.Add(firstRow);
-        if (secondRow.Buttons.Count() > 0)
+        if (secondRow.Components.Count() > 0)
             embedComponents.Add(secondRow);
 
         // create interaction message
         var message = new InteractionMessageProperties
         {
             Content = messageString,
-            Components = embedComponents.ToArray(),
+            Components = (IEnumerable<IMessageComponentProperties>)embedComponents.ToArray(),
             Embeds = [embed],
         };
         await interaction.SendResponseAsync(InteractionCallback.Message(message));
