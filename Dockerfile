@@ -1,4 +1,4 @@
-FROM ubuntu:24.10 AS base
+FROM ubuntu:25.10 AS base
 ENV OPENSSL_CONF=/etc/ssl
 RUN apt-get update
 RUN apt-get install build-essential chrpath libssl-dev libxft-dev \
