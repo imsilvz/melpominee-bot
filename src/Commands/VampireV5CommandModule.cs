@@ -70,3 +70,4 @@ public class VampireV5CommandModule : ApplicationCommandModule<ApplicationComman
         await interaction.SendResponseAsync(InteractionCallback.Message(message));
     }
 }
+
