@@ -102,6 +102,7 @@ namespace Melpominee.Services
             foreach (var command in applicationCommands)
             {
                 Debug.WriteLine($"Command: {command.Name} (ID: {command.Id})");
+                Debug.WriteLine($"  Description: {command.Description}");
             }
         }
 
