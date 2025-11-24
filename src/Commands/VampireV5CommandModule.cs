@@ -6,7 +6,7 @@ using Melpominee.Utility;
 namespace Melpominee.Commands;
 public class VampireV5CommandModule : ApplicationCommandModule<ApplicationCommandContext>
 {
-    [SlashCommand("v5", "Roll a dice pool from Vampire: the Masquerade v5")]
+    [SlashCommand("v5", "Roll a dice pool from Vampire: the Masquerade v5", Register = true)]
     public async Task VampireV5Roll(
         [SlashCommandParameter(Name = "pool", Description = "Number of dice in the pool")] int @dicePool,
         [SlashCommandParameter(Name = "hunger", Description = "Number of dice to replace with hunger dice")] int @hungerPool)

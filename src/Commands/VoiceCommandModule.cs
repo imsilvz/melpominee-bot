@@ -1,6 +1,7 @@
 ﻿using Melpominee.Models;
 using Melpominee.Services;
 using Melpominee.Utility;
+using Microsoft.Win32;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
@@ -11,7 +12,7 @@ using System.Text.RegularExpressions;
 namespace Melpominee.Commands;
 public class VoiceCommandModule(MelpomineeAudioService _audioService) : ApplicationCommandModule<ApplicationCommandContext>
 {
-    [SlashCommand("summon", "Summon Melpominee to a channel.", Contexts = [InteractionContextType.Guild])]
+    [SlashCommand("summon", "Summon Melpominee to a channel.", Contexts = [InteractionContextType.Guild], Register = true)]
     public async Task JoinVoice()
     {
         var guild = Context.Guild!;
@@ -62,7 +63,7 @@ public class VoiceCommandModule(MelpomineeAudioService _audioService) : Applicat
         );
     }
 
-    [SlashCommand("dismiss", "Dismiss Melpominee from all voice channels.", Contexts = [InteractionContextType.Guild])]
+    [SlashCommand("dismiss", "Dismiss Melpominee from all voice channels.", Contexts = [InteractionContextType.Guild], Register = true)]
     public async Task LeaveVoice()
     {
         var client = Context.Client;
@@ -98,7 +99,7 @@ public class VoiceCommandModule(MelpomineeAudioService _audioService) : Applicat
     }
 }
 
-[SlashCommand("audio", "Audio Playback", Contexts = [InteractionContextType.Guild])]
+[SlashCommand("audio", "Audio Playback", Contexts = [InteractionContextType.Guild], Register = true)]
 public class VoiceAudioCommandModule(MelpomineeAudioService _audioService, DataContext _dataContext) : ApplicationCommandModule<ApplicationCommandContext>
 {
     // Start queue playback. Optionally, specify a new source to play immediately.
