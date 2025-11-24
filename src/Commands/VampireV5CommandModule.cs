@@ -28,7 +28,7 @@ public class VampireV5CommandModule : ApplicationCommandModule<ApplicationComman
         var embed = VTMV5.GetResultEmbed(results);
 
         // create components
-        var embedComponents = new List<IComponentProperties>();
+        var embedComponents = new List<IMessageComponentProperties>();
 
         // first action row
         var firstRow = new ActionRowProperties();
@@ -64,7 +64,7 @@ public class VampireV5CommandModule : ApplicationCommandModule<ApplicationComman
         var message = new InteractionMessageProperties
         {
             Content = messageString,
-            Components = (IEnumerable<IMessageComponentProperties>)embedComponents.ToArray(),
+            Components = embedComponents.ToArray(),
             Embeds = [embed],
         };
         await interaction.SendResponseAsync(InteractionCallback.Message(message));
